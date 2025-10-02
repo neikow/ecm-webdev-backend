@@ -13,5 +13,7 @@ class GameRoomModel(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     created_at: datetime | None = Field(default=None)
     password: str
-    game_type: GameType = Field(sa_column=Column(Enum(GameType)), default=GameType.connect_four)
-    is_active: bool = Field(default=False)
+    game_type: GameType = Field(
+        sa_column=Column(Enum(GameType)), default=GameType.connect_four
+    )
+    is_active: bool = Field(default=True)

@@ -1,0 +1,4 @@
+# serializer version: 1
+# name: test_create_access_token
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYWRtaW4iLCJyb29tX2lkIjoxLCJleHAiOjkwMH0.KxFDPcZok1wcC9viNcfguu0SEPR0i3q_AL2xiMWlZD4'
+# ---

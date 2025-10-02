@@ -1,8 +1,11 @@
 import pytest
 
 from backend.models.game_room_model import GameType
-from backend.services.game_room_service import GameRoomService, GameRoomDoesNotExist, InvalidGameRoomPassword, \
-    PasswordAlreadyInUse
+from backend.services.game_room_service import (
+    GameRoomService,
+    GameRoomDoesNotExist,
+    PasswordAlreadyInUse,
+)
 
 
 def test_game_room_can_be_created(session):
@@ -15,7 +18,7 @@ def test_game_room_can_be_created(session):
     assert game_room.id is not None
     assert game_room.password == password
     assert game_room.game_type == game_type
-    assert game_room.is_active is False
+    assert game_room.is_active is True
 
 
 def test_is_password_in_use_by_active_game_room(session):
@@ -24,25 +27,20 @@ def test_is_password_in_use_by_active_game_room(session):
 
     game_room = GameRoomService.create(session, game_type, password)
     assert game_room is not None
+    assert (
+        GameRoomService.is_password_in_use_by_active_game_room(session, password)
+        is True
+    )
 
-    activated_room = GameRoomService.activate(session, game_room.id, password)
-    assert activated_room.is_active is True
 
-    assert GameRoomService.is_password_in_use_by_active_game_room(session, password) is True
-
-
-def test_game_room_cannot_be_created_if_password_already_in_use_by_an_active_room(session):
+def test_game_room_cannot_be_created_if_password_already_in_use_by_an_active_room(
+    session,
+):
     password = "securepassword"
     game_type = GameType.connect_four
 
     game_room1 = GameRoomService.create(session, game_type, password)
     assert game_room1 is not None
-
-    game_room2 = GameRoomService.create(session, game_type, password)
-    assert game_room2 is not None
-
-    activated_room = GameRoomService.activate(session, game_room1.id, password)
-    assert activated_room.is_active is True
 
     with pytest.raises(PasswordAlreadyInUse):
         GameRoomService.create(session, game_type, password)
@@ -71,32 +69,6 @@ def test_game_room_get_or_error_non_existing(session):
         assert False, "Expected ValueError was not raised"
 
 
-def test_game_room_activate_with_password(session):
-    password = "securepassword"
-    game_type = GameType.connect_four
-
-    create_game_room = GameRoomService.create(session, game_type, password)
-    assert create_game_room is not None
-    assert create_game_room.is_active is False
-
-    game_room = GameRoomService.activate(session, create_game_room.id, password)
-
-    assert game_room.is_active is True
-
-
-def test_game_room_activate_with_wrong_password(session):
-    password = "securepassword"
-    wrong_password = "wrongpassword"
-    game_type = GameType.connect_four
-
-    create_game_room = GameRoomService.create(session, game_type, password)
-    assert create_game_room is not None
-    assert create_game_room.is_active is False
-
-    with pytest.raises(InvalidGameRoomPassword):
-        GameRoomService.activate(session, create_game_room.id, wrong_password)
-
-
 def test_game_room_check_password_with_password(session):
     password = "securepassword"
     game_type = GameType.connect_four
@@ -104,7 +76,9 @@ def test_game_room_check_password_with_password(session):
     create_game_room = GameRoomService.create(session, game_type, password)
     assert create_game_room is not None
 
-    assert GameRoomService.check_password(session, create_game_room.id, password) is True
+    assert (
+        GameRoomService.check_password(session, create_game_room.id, password) is True
+    )
 
 
 def test_list_all(session):
@@ -130,4 +104,20 @@ def test_game_room_check_password_with_wrong_password(session):
     create_game_room = GameRoomService.create(session, game_type, password)
     assert create_game_room is not None
 
-    assert GameRoomService.check_password(session, create_game_room.id, wrong_password) is False
+    assert (
+        GameRoomService.check_password(session, create_game_room.id, wrong_password)
+        is False
+    )
+
+
+def test_find_game_room_by_password(session):
+    password = "securepassword"
+    game_type = GameType.connect_four
+
+    create_game_room = GameRoomService.create(session, game_type, password)
+    found_game_room = GameRoomService.find_by_password(session, password)
+
+    assert found_game_room is not None
+    assert found_game_room.id == create_game_room.id
+    assert found_game_room.password == create_game_room.password
+    assert found_game_room.game_type == create_game_room.game_type

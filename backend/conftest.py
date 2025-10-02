@@ -1,3 +1,6 @@
+import os
+from contextlib import contextmanager
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import StaticPool
@@ -28,3 +31,25 @@ def client(session):
         yield c
 
     app.dependency_overrides = {}
+
+
+@contextmanager
+def mock_env(overrides: dict[str, str]):
+    original = dict(os.environ)
+
+    os.environ.update(overrides)
+    try:
+        yield os.environ
+    finally:
+        os.environ.clear()
+        os.environ.update(original)
+
+
+@pytest.fixture(name="mocked_env")
+def mocked_env():
+    yield mock_env
+
+
+def test_mocked_env(mocked_env):
+    with mocked_env({"test_var": "value"}):
+        assert os.getenv("test_var") == "value"
