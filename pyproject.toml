@@ -1,9 +1,19 @@
 [project]
 name = "ecm-webdev-backend"
 version = "0.1.0"
-description = "Add your description here"
+description = "Web development backend course at ECM"
 requires-python = ">=3.12"
 dependencies = [
-    "flask>=3.1.2",
+    "fastapi>=0.118.0",
+    "httpx>=0.28.1",
     "pytest>=8.4.2",
+    "sqlmodel>=0.0.25",
+    "uvicorn>=0.37.0",
+    "websocket>=0.2.1",
+]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.7",
+    "mypy>=1.18.2",
 ]

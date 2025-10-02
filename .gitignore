@@ -1,0 +1,15 @@
+# IntelliJ
+.idea
+*.iml
+out
+gen
+
+# Node
+node_modules
+dist
+.env
+.env.local
+.env.*.local
+
+# Local
+database.db
