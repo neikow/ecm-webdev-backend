@@ -16,6 +16,11 @@ function JoinGameModal(props: {
   modalRef: RefObject<HTMLDialogElement | null>
 }) {
   const navigate = useNavigate()
+  const [selectedGameRoom, setSelectedGameRoom] = useState<{
+    id: number
+    password: string
+    game_type: string
+  }>()
   const [isLoading, setIsLoading] = useState(false)
   const {
     register,
@@ -27,12 +32,26 @@ function JoinGameModal(props: {
   })
 
   async function onSubmit(data: z.infer<typeof JoinGameFormSchema>) {
+    if (selectedGameRoom?.password === data.password) {
+      const response = await fetch(`/api/game_rooms/join/${selectedGameRoom.id}?password=${selectedGameRoom.password}`, {
+        method: 'POST',
+      })
+      if (response.ok) {
+        navigate(`/game-rooms/${selectedGameRoom.id}`)
+      }
+      else {
+        setError('root', { message: 'An error occured when trying to join the game' })
+      }
+    }
+
+    setSelectedGameRoom(undefined)
+
     setIsLoading(true)
-    const response = await fetch(`/api/game_rooms/find-by-password?password=${data.password}`)
+    const response = await fetch(`/api/game_rooms/find?password=${data.password}`)
     setIsLoading(false)
     if (response.ok) {
       const room = await response.json()
-      navigate(`/game-rooms/${room.id}?password=${data.password}`)
+      setSelectedGameRoom(room)
     }
     else if (response.status === 404) {
       setError('password', { message: 'Room not found' })
@@ -55,15 +74,32 @@ function JoinGameModal(props: {
               {...register('password')}
               type="text"
               placeholder="Room Password"
-              className={cn({ 'input w-full': true, 'input-error': errors.password })}
+              className={cn({
+                'input w-full': true,
+                'input-success': !!selectedGameRoom,
+                'input-error': errors.password,
+              })}
             />
             {errors.password && (
               <p className="text-error mt-2 text-sm text-center w-full">
                 {errors.password.message}
               </p>
             )}
-
-            <button disabled={isLoading} type="submit" className="btn btn-primary mt-4 w-full">Join Room</button>
+            <button
+              disabled={isLoading}
+              type="submit"
+              className={
+                cn({
+                  'btn btn-primary mt-4 w-full': true,
+                  'btn-disabled loading': isLoading,
+                  'btn-success': !!selectedGameRoom,
+                })
+              }
+            >
+              {
+                selectedGameRoom ? `Join Room #${selectedGameRoom.id}` : 'Find Room'
+              }
+            </button>
           </form>
         </div>
       </div>

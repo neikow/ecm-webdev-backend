@@ -134,6 +134,7 @@ async def find_game_room_by_password(
         )
 
     game_room = GameRoomService.find_by_password(session, password)
+
     if not game_room:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
