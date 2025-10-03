@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
+from starlette.websockets import WebSocket
 
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
@@ -194,3 +195,18 @@ async def leave_game_room(
                 "message": "You are not in a game room",
             },
         )
+
+
+def dispatch(websocket: WebSocket, game_room_id: int, data: dict) -> None:
+    pass
+
+
+@router.websocket("/{game_room_id}/ws")
+async def websocket_endpoint(
+        game_room_id: int,
+        websocket: WebSocket
+):
+    await websocket.accept()
+    while True:
+        data = await websocket.receive_json()
+        dispatch(websocket, game_room_id, data)

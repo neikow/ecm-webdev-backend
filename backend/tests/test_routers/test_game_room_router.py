@@ -1,7 +1,11 @@
+import pytest
+from flexmock import flexmock
 from starlette import status
+from starlette.websockets import WebSocketDisconnect, WebSocket
 
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameType
+from backend.routers import game_room_router
 from backend.services.game_room_service import GameRoomService
 from backend.utils.errors import ErrorCode
 from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE
@@ -168,3 +172,20 @@ def test_leave_game_room(session, client):
     assert response.cookies.get(AUTHORIZATION_COOKIE) is None
     data = response.json()
     assert data["message"] == "You have successfully left the game room"
+
+
+@pytest.mark.asyncio
+async def test_websocket_endpoint(session, client):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="secret"
+    )
+
+    flexmock(game_room_router).should_receive("dispatch").once().with_args(
+        WebSocket, game_room.id, {"action": "test"}
+    )
+
+    try:
+        with client.websocket_connect(f"/game_rooms/{game_room.id}/ws") as websocket:
+            websocket.send_json({"action": "test"})
+    except WebSocketDisconnect:
+        pass
