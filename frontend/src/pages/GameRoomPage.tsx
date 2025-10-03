@@ -44,10 +44,10 @@ export function GameRoomPage() {
   }
 
   return (
-    <div className="flex flex-col bg-base-200">
-      <header className="flex flex-row justify-between mb-6">
+    <div className="min-h-screen flex flex-col bg-base-200">
+      <header className="flex flex-row justify-between">
         <div className="flex flex-row gap-4 items-center justify-start p-4">
-          <h1 className="text-4xl font-bold">
+          <h1 className="text-4xl font-bold text-secondary">
             Game Room #
             {data?.id}
           </h1>
@@ -65,19 +65,36 @@ export function GameRoomPage() {
           <LeaveGameRoomButton />
         </div>
       </header>
-      <div className="min-h-screen grid grid-cols-5 items-center">
-        <div>
-
-        </div>
+      <div className="grid grid-cols-7 items-center h-[calc(100vh-96px)]">
+        <div className="col-span-1 h-full"></div>
         <div
-          className="col-span-3 h-full"
+          className="col-span-4 h-full pr-4"
         >
-          <h3>
-            Players
-          </h3>
-        </div>
-        <div>
+          <div className="w-full h-full card bg-base-100 shadow-md p-4">
 
+          </div>
+        </div>
+        <div className="col-span-2 h-full pr-4 flex flex-col">
+          <div className="card bg-base-100 shadow-md mb-4 p-4 min-h-48">
+            <h3 className="mb-2 font-bold text-lg">
+              Players
+            </h3>
+          </div>
+          <div className="card bg-base-100 shadow-md p-4 flex-1 flex flex-col">
+            <h3 className="mb-2 font-bold text-lg">
+              Chat
+            </h3>
+            <div className="flex-1">
+
+            </div>
+            <div>
+              <input
+                type="text"
+                placeholder="Type a message..."
+                className="input input-bordered w-full"
+              />
+            </div>
+          </div>
         </div>
       </div>
     </div>
