@@ -40,9 +40,16 @@ function JoinGameModal(props: {
         navigate(`/game-rooms/${selectedGameRoom.id}`)
       }
       else {
-        const {} = await response.json()
+        const {
+          detail: { code },
+        } = await response.json()
 
-        setError('root', { message: 'An error occured when trying to join the game' })
+        if (code === 'game_room_full') {
+          setError('root', { message: 'This game room is full' })
+        }
+        else {
+          setError('root', { message: 'An error occured when trying to join the game' })
+        }
       }
     }
 
