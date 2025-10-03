@@ -4,6 +4,7 @@ from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
 
+from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
 from backend.services.game_room_service import (
     GameRoomService,
@@ -11,8 +12,9 @@ from backend.services.game_room_service import (
     PasswordAlreadyInUse,
 )
 from backend.utils.db import get_session
-from backend.utils.security import PlayerData, current_player_data, add_authorization_cookie, create_access_token, \
-    PlayerRole
+from backend.utils.errors import ErrorCode
+from backend.utils.security import current_player_data, add_authorization_cookie, create_access_token, \
+    remove_authorization_cookie
 
 router = APIRouter(prefix="/game_rooms", tags=["game_rooms"])
 
@@ -30,20 +32,25 @@ async def create_game_room(
         response: Response,
         game_data: CreateGameRoomData,
         session: Session = Depends(get_session),
-        player_data: PlayerData | None = Depends(current_player_data),
+        player_data: GamePlayerModel | None = Depends(current_player_data),
 ):
     if player_data is not None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="You are already in a game room",
+            detail={
+                "code": ErrorCode.ALREADY_IN_GAME_ROOM,
+                "message": "You are already in a game room, cannot create a new one",
+                "room_id": player_data.room_id,
+                "role": player_data.role,
+            },
         )
     try:
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
         add_authorization_cookie(
             response,
             create_access_token(
-                PlayerData(
-                    role=PlayerRole.admin, room_id=game_room.id
+                GamePlayerModel(
+                    role=UserRole.admin, room_id=game_room.id
                 )
             ))
 
@@ -81,13 +88,20 @@ async def get_game_rooms(session: Session = Depends(get_session)):
     response_model=GameRoomModel,
 )
 async def get_game_room(
-        game_room_id: int, password: str, session: Session = Depends(get_session)
+        game_room_id: int,
+        password: str | None = None,
+        session: Session = Depends(get_session),
+        current_player: GamePlayerModel | None = Depends(current_player_data)
 ):
     try:
         game_service = GameRoomService.get_or_error(session, game_room_id)
+
+        if current_player is not None and current_player.room_id == game_room_id:
+            return game_service
+
         if game_service.password != password:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid password"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing password"
             )
         return game_service
     except GameRoomDoesNotExist as e:
@@ -95,7 +109,7 @@ async def get_game_room(
 
 
 @router.get(
-    "/find-by-password",
+    "/find",
     response_model=GameRoomModel,
 )
 async def find_game_room_by_password(
@@ -115,7 +129,57 @@ async def find_game_room_by_password(
         )
     return game_room
 
-# async def test(user: PlayerData | None = Depends(current_user_data)):
-#     if user is None:
-#         return {"message": "No user"}
-#     return {"message": f"User role: {user.role}, room_id: {user.room_id}"}
+
+@router.post(
+    '/join/{game_room_id}',
+)
+async def join_game_room(
+        game_room_id: int,
+        password: str,
+        response: Response,
+        session: Session = Depends(get_session),
+) -> GamePlayerModel:
+    game_room = GameRoomService.find_by_password(session, password)
+    if not game_room:
+        raise GameRoomDoesNotExist
+
+    user = GameRoomService.add_user(session, game_room_id, UserRole.player)
+    add_authorization_cookie(response, create_access_token(user))
+    return user
+
+
+class LeaveGameRoomResponse(BaseModel):
+    message: str
+
+
+@router.post(
+    '/leave',
+)
+async def leave_game_room(
+        response: Response,
+        session: Session = Depends(get_session),
+        player_data: GamePlayerModel | None = Depends(current_player_data),
+) -> LeaveGameRoomResponse:
+    if player_data is None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.NOT_IN_GAME_ROOM,
+                "message": "You are not in a game room",
+            },
+        )
+    try:
+        GameRoomService.remove_user(session, player_data.id)
+
+        remove_authorization_cookie(response)
+        return LeaveGameRoomResponse(
+            message="You have successfully left the game room",
+        )
+    except GameRoomDoesNotExist:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail={
+                "code": ErrorCode.NOT_IN_GAME_ROOM,
+                "message": "You are not in a game room",
+            },
+        )

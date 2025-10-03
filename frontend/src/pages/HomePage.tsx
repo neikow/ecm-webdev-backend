@@ -9,7 +9,7 @@ import { cn } from '../utils/cn.ts'
 export const GameRoomPasswordSchema = z.string().min(5, 'Room password muse be at least 5 characters long').max(32, 'Room password is too long')
 
 const JoinGameFormSchema = z.object({
-  roomPassword: GameRoomPasswordSchema,
+  password: GameRoomPasswordSchema,
 })
 
 function JoinGameModal(props: {
@@ -28,17 +28,17 @@ function JoinGameModal(props: {
 
   async function onSubmit(data: z.infer<typeof JoinGameFormSchema>) {
     setIsLoading(true)
-    const response = await fetch(`/api/game_rooms/find-by-password?password=${data.roomPassword}`)
+    const response = await fetch(`/api/game_rooms/find-by-password?password=${data.password}`)
     setIsLoading(false)
     if (response.ok) {
       const room = await response.json()
-      navigate(`/game-rooms/${room.id}?password=${data.roomPassword}`)
+      navigate(`/game-rooms/${room.id}?password=${data.password}`)
     }
     else if (response.status === 404) {
-      setError('roomPassword', { message: 'Room not found' })
+      setError('password', { message: 'Room not found' })
     }
     else {
-      setError('roomPassword', { message: 'Something went wrong' })
+      setError('password', { message: 'Something went wrong' })
     }
   }
 
@@ -52,14 +52,14 @@ function JoinGameModal(props: {
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="w-xs">
             <input
-              {...register('roomPassword')}
+              {...register('password')}
               type="text"
               placeholder="Room Password"
-              className={cn({ 'input w-full': true, 'input-error': errors.roomPassword })}
+              className={cn({ 'input w-full': true, 'input-error': errors.password })}
             />
-            {errors.roomPassword && (
+            {errors.password && (
               <p className="text-error mt-2 text-sm text-center w-full">
-                {errors.roomPassword.message}
+                {errors.password.message}
               </p>
             )}
 

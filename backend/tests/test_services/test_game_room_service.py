@@ -1,11 +1,14 @@
 import pytest
+from sqlmodel import select
 
+from backend.models.game_player_model import UserRole, GamePlayerModel
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import (
     GameRoomService,
     GameRoomDoesNotExist,
-    PasswordAlreadyInUse,
+    PasswordAlreadyInUse, RoomIsFull,
 )
+from backend.utils.game_utils import get_room_max_users
 
 
 def test_game_room_can_be_created(session):
@@ -28,13 +31,13 @@ def test_is_password_in_use_by_active_game_room(session):
     game_room = GameRoomService.create(session, game_type, password)
     assert game_room is not None
     assert (
-        GameRoomService.is_password_in_use_by_active_game_room(session, password)
-        is True
+            GameRoomService.is_password_in_use_by_active_game_room(session, password)
+            is True
     )
 
 
 def test_game_room_cannot_be_created_if_password_already_in_use_by_an_active_room(
-    session,
+        session,
 ):
     password = "securepassword"
     game_type = GameType.connect_four
@@ -77,7 +80,7 @@ def test_game_room_check_password_with_password(session):
     assert create_game_room is not None
 
     assert (
-        GameRoomService.check_password(session, create_game_room.id, password) is True
+            GameRoomService.check_password(session, create_game_room.id, password) is True
     )
 
 
@@ -105,8 +108,8 @@ def test_game_room_check_password_with_wrong_password(session):
     assert create_game_room is not None
 
     assert (
-        GameRoomService.check_password(session, create_game_room.id, wrong_password)
-        is False
+            GameRoomService.check_password(session, create_game_room.id, wrong_password)
+            is False
     )
 
 
@@ -121,3 +124,59 @@ def test_find_game_room_by_password(session):
     assert found_game_room.id == create_game_room.id
     assert found_game_room.password == create_game_room.password
     assert found_game_room.game_type == create_game_room.game_type
+
+
+def test_fail_to_add_user_if_game_does_not_exist(session):
+    with pytest.raises(GameRoomDoesNotExist):
+        GameRoomService.add_user(session=session, game_room_id=-1, role=UserRole.player)
+
+
+def test_add_user_to_game_room(session):
+    game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+
+    player = GameRoomService.add_user(
+        session=session, game_room_id=game_room.id, role=UserRole.player
+    )
+
+    assert player is not None
+    assert player.id is not None
+    assert player.room_id == game_room.id
+    assert player.role == UserRole.player
+
+
+def test_add_user_to_a_full_game_room(session):
+    game_type = GameType.connect_four
+    game_room = GameRoomService.create(session, game_type, "securepassword")
+    for _ in range(get_room_max_users(game_type)):
+        GameRoomService.add_user(
+            session=session, game_room_id=game_room.id, role=UserRole.player
+        )
+    with pytest.raises(RoomIsFull):
+        GameRoomService.add_user(
+            session=session, game_room_id=game_room.id, role=UserRole.player
+        )
+
+
+def test_remove_player_from_game_room(session):
+    game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+
+    player = GameRoomService.add_user(
+        session=session, game_room_id=game_room.id, role=UserRole.player
+    )
+
+    assert player is not None
+    assert player.id is not None
+    assert player.room_id == game_room.id
+    assert player.role == UserRole.player
+
+    result = GameRoomService.remove_user(session=session, player_id=player.id)
+
+    assert result is True
+    statement = select(GamePlayerModel.id).where(GamePlayerModel.id == player.id)
+    assert session.exec(statement).first() is None
+
+
+def test_fail_to_remove_non_existing_player(session):
+    result = GameRoomService.remove_user(session=session, player_id="-non-existing-id")
+
+    assert result is False

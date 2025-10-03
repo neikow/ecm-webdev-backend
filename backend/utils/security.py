@@ -1,14 +1,14 @@
-import enum
 from datetime import timezone, datetime, timedelta
 from typing import Annotated
 
 import jwt
 from fastapi import Cookie
 from fastapi.security import OAuth2PasswordBearer
-from jwt import InvalidTokenError
+from jwt.exceptions import DecodeError
 from pydantic import BaseModel
 from starlette.responses import Response
 
+from backend.models.game_player_model import GamePlayerModel
 from backend.utils.env import get_env
 
 JWT_SECRET_KEY = get_env("JWT_SECRET_KEY")
@@ -20,6 +20,10 @@ class FailedToDecodeToken(Exception):
     pass
 
 
+class TokenExpiredError(Exception):
+    pass
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 
@@ -28,17 +32,7 @@ class Token(BaseModel):
     token_type: str
 
 
-class PlayerRole(str, enum.Enum):
-    admin = "admin"
-    default = "default"
-
-
-class PlayerData(BaseModel):
-    role: PlayerRole = PlayerRole.default
-    room_id: int
-
-
-def create_access_token(data: PlayerData, expires_delta: timezone | None = None) -> str:
+def create_access_token(data: GamePlayerModel, expires_delta: timezone | None = None) -> str:
     to_encode = data.model_dump()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
@@ -48,11 +42,13 @@ def create_access_token(data: PlayerData, expires_delta: timezone | None = None)
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
 
 
-def verify_token(token: str) -> PlayerData:
+def verify_token(token: str) -> GamePlayerModel:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
-        return PlayerData(**payload)
-    except InvalidTokenError:
+        return GamePlayerModel(**payload)
+    except jwt.ExpiredSignatureError:
+        raise TokenExpiredError
+    except DecodeError:
         raise FailedToDecodeToken
 
 
@@ -60,8 +56,14 @@ def add_authorization_cookie(response: Response, token: str) -> None:
     response.set_cookie(AUTHORIZATION_COOKIE, token, httponly=True)
 
 
-async def current_player_data(authorization: Annotated[str | None, Cookie()] = None) -> PlayerData | None:
+def remove_authorization_cookie(response: Response) -> None:
+    response.set_cookie(AUTHORIZATION_COOKIE, expires=0, max_age=0, httponly=True)
+
+
+async def current_player_data(authorization: Annotated[str | None, Cookie()] = None) -> GamePlayerModel | None:
     if not authorization:
         return None
-
-    return verify_token(authorization)
+    try:
+        return verify_token(authorization)
+    except TokenExpiredError:
+        return None
