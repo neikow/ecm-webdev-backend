@@ -8,23 +8,19 @@ from backend.models.game_room_model import GameType, GameRoomModel
 from backend.utils.game_utils import get_room_max_users
 
 
-class GameRoomDoesNotExist(Exception):
-    pass
-
-
-class InvalidGameRoomPassword(Exception):
-    pass
-
-
-class PasswordAlreadyInUse(Exception):
-    pass
-
-
-class RoomIsFull(Exception):
-    pass
-
-
 class GameRoomService:
+    class GameRoomDoesNotExist(Exception):
+        pass
+
+    class InvalidGameRoomPassword(Exception):
+        pass
+
+    class PasswordAlreadyInUse(Exception):
+        pass
+
+    class GameRoomIsFull(Exception):
+        pass
+
     @staticmethod
     def is_password_in_use_by_active_game_room(session: Session, password: str) -> bool:
         statement = select(GameRoomModel.id).where(
@@ -40,7 +36,7 @@ class GameRoomService:
             password: str,
     ) -> GameRoomModel:
         if GameRoomService.is_password_in_use_by_active_game_room(session, password):
-            raise PasswordAlreadyInUse
+            raise GameRoomService.PasswordAlreadyInUse
 
         game_room = GameRoomModel(
             game_type=game_type,
@@ -56,14 +52,14 @@ class GameRoomService:
         statement = select(GameRoomModel).where(GameRoomModel.id == game_room_id)
         game_room = session.exec(statement).first()
         if not game_room:
-            raise GameRoomDoesNotExist(f"Game room with id {game_room_id} not found")
+            raise GameRoomService.GameRoomDoesNotExist(f"Game room with id {game_room_id} not found")
         return game_room
 
     @staticmethod
     def check_password(session: Session, game_room_id: int, password: str) -> bool:
         game_room = GameRoomService.get_or_error(session, game_room_id)
         if not game_room:
-            raise GameRoomDoesNotExist(f"Game room with id {game_room_id} not found")
+            raise GameRoomService.GameRoomDoesNotExist(f"Game room with id {game_room_id} not found")
         return game_room.password == password
 
     @staticmethod
@@ -88,7 +84,7 @@ class GameRoomService:
         current_users_count = session.scalar(statement)
 
         if current_users_count >= max_users:
-            raise RoomIsFull
+            raise GameRoomService.GameRoomIsFull
 
         game_player = GamePlayerModel(
             room_id=game_room_id,

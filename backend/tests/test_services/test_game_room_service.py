@@ -5,8 +5,6 @@ from backend.models.game_player_model import UserRole, GamePlayerModel
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import (
     GameRoomService,
-    GameRoomDoesNotExist,
-    PasswordAlreadyInUse, RoomIsFull,
 )
 from backend.utils.game_utils import get_room_max_users
 
@@ -45,7 +43,7 @@ def test_game_room_cannot_be_created_if_password_already_in_use_by_an_active_roo
     game_room1 = GameRoomService.create(session, game_type, password)
     assert game_room1 is not None
 
-    with pytest.raises(PasswordAlreadyInUse):
+    with pytest.raises(GameRoomService.PasswordAlreadyInUse):
         GameRoomService.create(session, game_type, password)
 
 
@@ -64,12 +62,8 @@ def test_game_room_get_or_error_existing(session):
 def test_game_room_get_or_error_non_existing(session):
     non_existing_id = -1
 
-    try:
+    with pytest.raises(GameRoomService.GameRoomDoesNotExist):
         GameRoomService.get_or_error(session, non_existing_id)
-    except GameRoomDoesNotExist as e:
-        assert str(e) == f"Game room with id {non_existing_id} not found"
-    else:
-        assert False, "Expected ValueError was not raised"
 
 
 def test_game_room_check_password_with_password(session):
@@ -127,7 +121,7 @@ def test_find_game_room_by_password(session):
 
 
 def test_fail_to_add_user_if_game_does_not_exist(session):
-    with pytest.raises(GameRoomDoesNotExist):
+    with pytest.raises(GameRoomService.GameRoomDoesNotExist):
         GameRoomService.add_user(session=session, game_room_id=-1, role=UserRole.player)
 
 
@@ -151,7 +145,7 @@ def test_add_user_to_a_full_game_room(session):
         GameRoomService.add_user(
             session=session, game_room_id=game_room.id, role=UserRole.player
         )
-    with pytest.raises(RoomIsFull):
+    with pytest.raises(GameRoomService.GameRoomIsFull):
         GameRoomService.add_user(
             session=session, game_room_id=game_room.id, role=UserRole.player
         )

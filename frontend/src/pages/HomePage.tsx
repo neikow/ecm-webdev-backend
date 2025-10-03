@@ -40,6 +40,8 @@ function JoinGameModal(props: {
         navigate(`/game-rooms/${selectedGameRoom.id}`)
       }
       else {
+        const {} = await response.json()
+
         setError('root', { message: 'An error occured when trying to join the game' })
       }
     }
@@ -61,6 +63,8 @@ function JoinGameModal(props: {
     }
   }
 
+  const hasError = errors.password || errors.root
+
   return (
     <dialog ref={props.modalRef} className="modal">
       <div className="modal-box flex flex-col items-center">
@@ -76,8 +80,8 @@ function JoinGameModal(props: {
               placeholder="Room Password"
               className={cn({
                 'input w-full': true,
-                'input-success': !!selectedGameRoom,
-                'input-error': errors.password,
+                'input-success': !!selectedGameRoom && !hasError,
+                'input-error': hasError,
               })}
             />
             {errors.password && (
@@ -85,14 +89,21 @@ function JoinGameModal(props: {
                 {errors.password.message}
               </p>
             )}
+            {errors.root && (
+              <p className="text-error mt-2 text-sm text-center w-full">
+                {errors.root.message}
+              </p>
+            )}
             <button
               disabled={isLoading}
               type="submit"
               className={
                 cn({
-                  'btn btn-primary mt-4 w-full': true,
+                  'btn mt-4 w-full': true,
+                  'btn-primary': !selectedGameRoom && !hasError,
                   'btn-disabled loading': isLoading,
-                  'btn-success': !!selectedGameRoom,
+                  'btn-success': !!selectedGameRoom && !hasError,
+                  'btn-error': hasError,
                 })
               }
             >

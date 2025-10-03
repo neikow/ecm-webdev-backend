@@ -9,8 +9,6 @@ from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
 from backend.services.game_room_service import (
     GameRoomService,
-    GameRoomDoesNotExist,
-    PasswordAlreadyInUse,
 )
 from backend.utils.db import get_session
 from backend.utils.errors import ErrorCode
@@ -67,10 +65,13 @@ async def create_game_room(
             player=player,
         )
 
-    except PasswordAlreadyInUse:
+    except GameRoomService.PasswordAlreadyInUse:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password already in use by an active game room",
+            detail={
+                "code": ErrorCode.PASSWORD_USED,
+                "message": "The password is already in use",
+            },
         )
 
 
@@ -113,11 +114,21 @@ async def get_game_room(
 
         if game_service.password != password:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or missing password"
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail={
+                    "code": ErrorCode.PASSWORD_INVALID,
+                    "message": "Invalid or missing password",
+                }
             )
         return game_service
-    except GameRoomDoesNotExist as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    except GameRoomService.GameRoomDoesNotExist:
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                "message": "The requested game room does not exist",
+            }
+        )
 
 
 @router.get(
@@ -130,7 +141,10 @@ async def find_game_room_by_password(
     if not password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Password query parameter is required",
+            detail={
+                "code": ErrorCode.MISSING_QUERY_PARAMS,
+                "message": "Missing required query parameter: password",
+            },
         )
 
     game_room = GameRoomService.find_by_password(session, password)
@@ -138,7 +152,10 @@ async def find_game_room_by_password(
     if not game_room:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Game room with the given password not found",
+            detail={
+                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                "message": "Game room with the given password not found",
+            },
         )
     return game_room
 
@@ -154,11 +171,26 @@ async def join_game_room(
 ) -> GamePlayerModel:
     game_room = GameRoomService.find_by_password(session, password)
     if not game_room:
-        raise GameRoomDoesNotExist
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                "message": "Game room with the given password not found",
+            },
+        )
 
-    user = GameRoomService.add_user(session, game_room_id, UserRole.player)
-    add_authorization_cookie(response, create_access_token(user))
-    return user
+    try:
+        user = GameRoomService.add_user(session, game_room_id, UserRole.player)
+        add_authorization_cookie(response, create_access_token(user))
+        return user
+    except GameRoomService.GameRoomIsFull:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "code": ErrorCode.ROOM_FULL,
+                "message": "The game room is full",
+            },
+        )
 
 
 class LeaveGameRoomResponse(BaseModel):
@@ -188,7 +220,7 @@ async def leave_game_room(
         return LeaveGameRoomResponse(
             message="You have successfully left the game room",
         )
-    except GameRoomDoesNotExist:
+    except GameRoomService.GameRoomDoesNotExist:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail={

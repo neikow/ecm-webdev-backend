@@ -8,6 +8,7 @@ from backend.models.game_room_model import GameType
 from backend.routers import game_room_router
 from backend.services.game_room_service import GameRoomService
 from backend.utils.errors import ErrorCode
+from backend.utils.game_utils import get_room_max_users
 from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE
 from backend.utils.security import verify_token
 
@@ -61,7 +62,10 @@ def test_fail_to_get_game_room_with_invalid_password(session, client):
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
-    assert data["detail"] == f"Invalid or missing password"
+    assert data["detail"] == {
+        "code": 'password_invalid',
+        "message": "Invalid or missing password",
+    }
 
 
 def test_get_game_room_data_with_authentication_but_no_password(session, client):
@@ -98,7 +102,10 @@ def test_fail_to_find_game_room_by_empty_password(session, client):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     data = response.json()
-    assert data["detail"] == "Password query parameter is required"
+    assert data["detail"] == {
+        "code": "missing_query_params",
+        "message": "Missing required query parameter: password"
+    }
 
 
 def test_creating_game_room_sets_the_user_as_admin(session, client):
@@ -156,6 +163,24 @@ def test_join_game_room(session, client):
     assert data["role"] == UserRole.player
     assert data["room_id"] == game_room.id
     assert data["id"] is not None
+
+
+def test_fail_to_join_full_game_room(session, client):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="secret"
+    )
+    max_users = get_room_max_users(game_room.game_type)
+
+    for _ in range(max_users):
+        GameRoomService.add_user(
+            session=session, game_room_id=game_room.id, role=UserRole.player
+        )
+
+    response = client.post(f"/game_rooms/join/{game_room.id}?password=secret")
+    assert response.status_code == status.HTTP_409_CONFLICT
+    data = response.json()
+    assert data["detail"]["code"] == ErrorCode.ROOM_FULL
+    assert data["detail"]["message"] == "The game room is full"
 
 
 def test_leave_game_room(session, client):

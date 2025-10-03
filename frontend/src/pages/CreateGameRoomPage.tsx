@@ -125,7 +125,7 @@ export function CreateGameRoomPage() {
                   defaultValue={'connect_four' as AvailableGameType}
                   className={cn({
                     'select w-full max-w-xs mx-auto': true,
-                    'select-error': errors.game_type,
+                    'select-error': errors.game_type || errors.root,
                   })}
                 >
                   {
@@ -146,7 +146,10 @@ export function CreateGameRoomPage() {
                   {...register('password')}
                   type="text"
                   placeholder="Room Password"
-                  className={cn({ 'input w-full max-w-xs mx-auto': true, 'input-error': errors.password })}
+                  className={cn({
+                    'input w-full max-w-xs mx-auto': true,
+                    'input-error': errors.password || errors.root,
+                  })}
                 />
                 {errors.password && (
                   <span className="text-error mt-2 text-sm text-center w-full">{errors.password.message}</span>
@@ -156,7 +159,7 @@ export function CreateGameRoomPage() {
                 Create Room
               </button>
               {errors.root && (
-                <span className="text-error mt-2 text-sm text-center w-full">{errors.root.message}</span>
+                <span className="text-error text-sm text-center w-full">{errors.root.message}</span>
               )}
               <NavLink to="/" className="btn btn-outline mx-auto" type="submit">
                 Back
