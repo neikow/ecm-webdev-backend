@@ -28,15 +28,20 @@ def test_get_index(session, client):
 def test_create_game_room(session, client):
     response = client.post(
         "/game_rooms/",
-        json={"game_type": GameType.connect_four, "password": "secretpassword"},
+        json={
+            "game_type": GameType.connect_four,
+            "password": "secretpassword",
+            "user_name": "admin"
+        },
     )
 
     assert response.status_code == status.HTTP_201_CREATED
     json = response.json()
-    print(json)
     assert json["game_room"] is not None
     assert json["game_room"]["id"] is not None
     assert json["player"] is not None
+    assert json["player"]["id"] is not None
+    assert json["player"]["user_name"] == "admin"
 
 
 def test_get_game_room_with_valid_password(session, client):
@@ -111,13 +116,19 @@ def test_fail_to_find_game_room_by_empty_password(session, client):
 def test_creating_game_room_sets_the_user_as_admin(session, client):
     response = client.post(
         "/game_rooms/",
-        json={"game_type": GameType.connect_four, "password": "secretpassword"},
+        json={
+            "game_type": GameType.connect_four,
+            "password": "secretpassword",
+            "user_name": "admin"
+        },
     )
 
     assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
     assert data["game_room"]["id"] is not None
     assert data["player"]["id"] is not None
+    assert data["player"]["user_name"] == "admin"
+    assert data["player"]["role"] == UserRole.admin
     assert AUTHORIZATION_COOKIE in response.cookies
     token = response.cookies[AUTHORIZATION_COOKIE]
     assert token is not None
@@ -135,7 +146,11 @@ def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
 
     response = client.post(
         "/game_rooms/",
-        json={"game_type": GameType.connect_four, "password": "anothersecret"},
+        json={
+            "game_type": GameType.connect_four,
+            "password": "anothersecret",
+            "user_name": "admin"
+        },
     )
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -150,18 +165,20 @@ def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
 
 def test_join_game_room(session, client):
     game_room_password = "secret"
+    user_name = "admin"
     game_room = GameRoomService.create(
         session, game_type=GameType.connect_four, password=game_room_password
     )
     assert client.cookies.get(AUTHORIZATION_COOKIE) is None
     response = client.post(
-        f"/game_rooms/join/{game_room.id}?password={game_room_password}"
+        f"/game_rooms/join/{game_room.id}?password={game_room_password}&user_name={user_name}"
     )
     assert client.cookies.get(AUTHORIZATION_COOKIE) is not None
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
     assert data["role"] == UserRole.player
     assert data["room_id"] == game_room.id
+    assert data["user_name"] == user_name
     assert data["id"] is not None
 
 
@@ -173,10 +190,10 @@ def test_fail_to_join_full_game_room(session, client):
 
     for _ in range(max_users):
         GameRoomService.add_user(
-            session=session, game_room_id=game_room.id, role=UserRole.player
+            session=session, game_room_id=game_room.id, role=UserRole.player, user_name="player"
         )
 
-    response = client.post(f"/game_rooms/join/{game_room.id}?password=secret")
+    response = client.post(f"/game_rooms/join/{game_room.id}?password=secret&user_name=latecomer")
     assert response.status_code == status.HTTP_409_CONFLICT
     data = response.json()
     assert data["detail"]["code"] == ErrorCode.ROOM_FULL
@@ -188,7 +205,10 @@ def test_leave_game_room(session, client):
         session, game_type=GameType.connect_four, password="<PASSWORD>"
     )
     player = GameRoomService.add_user(
-        session=session, game_room_id=game_room.id, role=UserRole.player
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name="admin"
     )
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(player)
 

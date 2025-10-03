@@ -22,6 +22,7 @@ const AvailableGameTypeDefinitions: {
 
 const CreateGameRoomSchema = z.object({
   game_type: z.enum(AvailableGameTypes),
+  user_name: z.string().min(1, 'Name is required').max(32, 'Name is too long').optional(),
   password: GameRoomPasswordSchema,
 })
 
@@ -138,6 +139,21 @@ export function CreateGameRoomPage() {
                 </select>
                 {errors.game_type && (
                   <span className="text-error mt-2 text-sm text-center w-full">{errors.game_type.message}</span>
+                )}
+              </div>
+
+              <div className="flex flex-col">
+                <input
+                  {...register('user_name')}
+                  type="text"
+                  placeholder="User Name"
+                  className={cn({
+                    'input w-full max-w-xs mx-auto': true,
+                    'input-error': errors.user_name || errors.root,
+                  })}
+                />
+                {errors.user_name && (
+                  <span className="text-error mt-2 text-sm text-center w-full">{errors.user_name.message}</span>
                 )}
               </div>
 

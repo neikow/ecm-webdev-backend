@@ -21,6 +21,7 @@ router = APIRouter(prefix="/game_rooms", tags=["game_rooms"])
 class CreateGameRoomData(BaseModel):
     game_type: GameType
     password: str
+    user_name: str
 
 
 class CreateGameRoomResponse(BaseModel):
@@ -51,7 +52,12 @@ async def create_game_room(
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
         # Once again I still don't understand why this is necessary
         game_room_copy = game_room.model_copy()
-        player = GameRoomService.add_user(session, game_room.id, UserRole.admin)
+        player = GameRoomService.add_user(
+            session,
+            game_room.id,
+            UserRole.admin,
+            game_data.user_name
+        )
         add_authorization_cookie(
             response,
             create_access_token(
@@ -166,6 +172,7 @@ async def find_game_room_by_password(
 async def join_game_room(
         game_room_id: int,
         password: str,
+        user_name: str,
         response: Response,
         session: Session = Depends(get_session),
 ) -> GamePlayerModel:
@@ -180,7 +187,12 @@ async def join_game_room(
         )
 
     try:
-        user = GameRoomService.add_user(session, game_room_id, UserRole.player)
+        user = GameRoomService.add_user(
+            session=session,
+            game_room_id=game_room_id,
+            role=UserRole.player,
+            user_name=user_name
+        )
         add_authorization_cookie(response, create_access_token(user))
         return user
     except GameRoomService.GameRoomIsFull:

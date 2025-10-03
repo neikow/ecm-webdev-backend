@@ -11,5 +11,6 @@ class UserRole(str, enum.Enum):
 
 class GamePlayerModel(SQLModel, table=True):
     id: str = Field(default_factory=lambda: generate_nanoid(), primary_key=True)
+    user_name: str
     room_id: int
     role: UserRole = Field(default=UserRole.player, index=True)

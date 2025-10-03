@@ -122,14 +122,23 @@ def test_find_game_room_by_password(session):
 
 def test_fail_to_add_user_if_game_does_not_exist(session):
     with pytest.raises(GameRoomService.GameRoomDoesNotExist):
-        GameRoomService.add_user(session=session, game_room_id=-1, role=UserRole.player)
+        GameRoomService.add_user(
+            session=session,
+            game_room_id=-1,
+            role=UserRole.player,
+            user_name="player",
+        )
 
 
 def test_add_user_to_game_room(session):
     game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+    user_name = "admin"
 
     player = GameRoomService.add_user(
-        session=session, game_room_id=game_room.id, role=UserRole.player
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name=user_name
     )
 
     assert player is not None
@@ -141,21 +150,32 @@ def test_add_user_to_game_room(session):
 def test_add_user_to_a_full_game_room(session):
     game_type = GameType.connect_four
     game_room = GameRoomService.create(session, game_type, "securepassword")
+    user_name = "player"
     for _ in range(get_room_max_users(game_type)):
         GameRoomService.add_user(
-            session=session, game_room_id=game_room.id, role=UserRole.player
+            session=session,
+            game_room_id=game_room.id,
+            role=UserRole.player,
+            user_name=user_name
         )
     with pytest.raises(GameRoomService.GameRoomIsFull):
         GameRoomService.add_user(
-            session=session, game_room_id=game_room.id, role=UserRole.player
+            session=session,
+            game_room_id=game_room.id,
+            role=UserRole.player,
+            user_name=user_name,
         )
 
 
 def test_remove_player_from_game_room(session):
     game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+    user_name = "player"
 
     player = GameRoomService.add_user(
-        session=session, game_room_id=game_room.id, role=UserRole.player
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name=user_name
     )
 
     assert player is not None

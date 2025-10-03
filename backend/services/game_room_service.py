@@ -76,7 +76,7 @@ class GameRoomService:
         return game_rooms
 
     @staticmethod
-    def add_user(session: Session, game_room_id: int, role: UserRole) -> GamePlayerModel:
+    def add_user(session: Session, game_room_id: int, role: UserRole, user_name: str) -> GamePlayerModel:
         game_room = GameRoomService.get_or_error(session, game_room_id)
 
         max_users = get_room_max_users(game_room.game_type)
@@ -88,7 +88,8 @@ class GameRoomService:
 
         game_player = GamePlayerModel(
             room_id=game_room_id,
-            role=role
+            role=role,
+            user_name=user_name,
         )
 
         session.add(game_player)

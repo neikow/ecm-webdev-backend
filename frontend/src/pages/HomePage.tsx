@@ -9,6 +9,7 @@ import { cn } from '../utils/cn.ts'
 export const GameRoomPasswordSchema = z.string().min(5, 'Room password muse be at least 5 characters long').max(32, 'Room password is too long')
 
 const JoinGameFormSchema = z.object({
+  user_name: z.string().min(1, 'Name is required').max(32, 'Name is too long'),
   password: GameRoomPasswordSchema,
 })
 
@@ -33,7 +34,7 @@ function JoinGameModal(props: {
 
   async function onSubmit(data: z.infer<typeof JoinGameFormSchema>) {
     if (selectedGameRoom?.password === data.password) {
-      const response = await fetch(`/api/game_rooms/join/${selectedGameRoom.id}?password=${selectedGameRoom.password}`, {
+      const response = await fetch(`/api/game_rooms/join/${selectedGameRoom.id}?password=${selectedGameRoom.password}&user_name=${data.user_name}`, {
         method: 'POST',
       })
       if (response.ok) {
@@ -81,21 +82,40 @@ function JoinGameModal(props: {
             Enter the room password, your friend should have given it to you.
           </p>
           <form onSubmit={handleSubmit(onSubmit)} className="w-xs">
-            <input
-              {...register('password')}
-              type="text"
-              placeholder="Room Password"
-              className={cn({
-                'input w-full': true,
-                'input-success': !!selectedGameRoom && !hasError,
-                'input-error': hasError,
-              })}
-            />
-            {errors.password && (
-              <p className="text-error mt-2 text-sm text-center w-full">
-                {errors.password.message}
-              </p>
-            )}
+            <div className="mb-2">
+              <input
+                {...register('user_name')}
+                type="text"
+                placeholder="Name"
+                className={cn({
+                  'input w-full': true,
+                  'input-success': !!selectedGameRoom && !hasError,
+                  'input-error': hasError,
+                })}
+              />
+              {errors.user_name && (
+                <p className="text-error mt-2 text-sm text-center w-full">
+                  {errors.user_name.message}
+                </p>
+              )}
+            </div>
+            <div>
+              <input
+                {...register('password')}
+                type="text"
+                placeholder="Room Password"
+                className={cn({
+                  'input w-full': true,
+                  'input-success': !!selectedGameRoom && !hasError,
+                  'input-error': hasError,
+                })}
+              />
+              {errors.password && (
+                <p className="text-error mt-2 text-sm text-center w-full">
+                  {errors.password.message}
+                </p>
+              )}
+            </div>
             {errors.root && (
               <p className="text-error mt-2 text-sm text-center w-full">
                 {errors.root.message}
