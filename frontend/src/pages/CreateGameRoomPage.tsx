@@ -48,10 +48,12 @@ export function CreateGameRoomPage() {
 
     if (response.ok) {
       const successData: {
-        id: string
+        game_room: {
+          id: string
+        }
       } = await response.json()
 
-      navigate(`/game-rooms/${successData.id}`)
+      navigate(`/game-rooms/${successData.game_room.id}`)
     }
     else {
       const errorData: {
