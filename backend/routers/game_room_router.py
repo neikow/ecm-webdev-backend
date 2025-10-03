@@ -24,16 +24,20 @@ class CreateGameRoomData(BaseModel):
     password: str
 
 
+class CreateGameRoomResponse(BaseModel):
+    game_room: GameRoomModel
+    player: GamePlayerModel
+
+
 @router.post(
     "/",
-    response_model=GameRoomModel,
 )
 async def create_game_room(
         response: Response,
         game_data: CreateGameRoomData,
         session: Session = Depends(get_session),
         player_data: GamePlayerModel | None = Depends(current_player_data),
-):
+) -> CreateGameRoomResponse:
     if player_data is not None:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -46,15 +50,22 @@ async def create_game_room(
         )
     try:
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
+        # Once again I still don't understand why this is necessary
+        game_room_copy = game_room.model_copy()
+        player = GameRoomService.add_user(session, game_room.id, UserRole.admin)
         add_authorization_cookie(
             response,
             create_access_token(
-                GamePlayerModel(
-                    role=UserRole.admin, room_id=game_room.id
-                )
-            ))
+                player
+            )
+        )
 
-        return game_room
+        response.status_code = status.HTTP_201_CREATED
+        return CreateGameRoomResponse(
+            game_room=game_room_copy,
+            player=player,
+        )
+
     except PasswordAlreadyInUse:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

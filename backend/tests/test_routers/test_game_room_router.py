@@ -26,9 +26,12 @@ def test_create_game_room(session, client):
         json={"game_type": GameType.connect_four, "password": "secretpassword"},
     )
 
-    assert response.status_code == 200
-    data = response.json()
-    assert data["id"] is not None
+    assert response.status_code == status.HTTP_201_CREATED
+    json = response.json()
+    print(json)
+    assert json["game_room"] is not None
+    assert json["game_room"]["id"] is not None
+    assert json["player"] is not None
 
 
 def test_get_game_room_with_valid_password(session, client):
@@ -100,16 +103,17 @@ def test_creating_game_room_sets_the_user_as_admin(session, client):
         json={"game_type": GameType.connect_four, "password": "secretpassword"},
     )
 
-    assert response.status_code == status.HTTP_200_OK
+    assert response.status_code == status.HTTP_201_CREATED
     data = response.json()
-    assert data["id"] is not None
+    assert data["game_room"]["id"] is not None
+    assert data["player"]["id"] is not None
     assert AUTHORIZATION_COOKIE in response.cookies
     token = response.cookies[AUTHORIZATION_COOKIE]
     assert token is not None
 
     player_data = verify_token(token)
     assert player_data.role == UserRole.admin
-    assert player_data.room_id == data["id"]
+    assert player_data.room_id == data["game_room"]["id"]
 
 
 def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
