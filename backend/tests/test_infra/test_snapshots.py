@@ -3,6 +3,7 @@ from flexmock import flexmock
 
 from backend.domain.events import BaseEvent, RoomEvent
 from backend.infra.snapshots import SnapshotBuilderBase, SnapshotBase, SnapshotPlayer, RoomStatus, SnapshotChatMessage
+from backend.models.game_player_model import UserRole
 
 
 @pytest.fixture()
@@ -14,10 +15,10 @@ def snapshot_builder() -> SnapshotBuilderBase:
 @pytest.mark.asyncio
 async def test_build_player_list_snapshot(snapshot_builder) -> None:
     room_id = 0
-    admin_data = {'user_id': "0", "user_name": "admin"}
-    snapshot_admin = SnapshotPlayer(user_name="admin", id="0")
-    player_data = {'user_id': "1", "user_name": "player"}
-    snapshot_player = SnapshotPlayer(user_name="player", id="1")
+    admin_data = {'user_id': "0", "user_name": "admin", "role": UserRole.admin.value}
+    snapshot_admin = SnapshotPlayer(user_name="admin", id="0", role=UserRole.admin)
+    player_data = {'user_id': "1", "user_name": "player", "role": UserRole.player.value}
+    snapshot_player = SnapshotPlayer(user_name="player", id="1", role=UserRole.player)
 
     events: list[BaseEvent] = []
 

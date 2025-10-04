@@ -1,16 +1,24 @@
 import type { ServerMessage } from '../events/RoomEventClient.ts'
+import type { Player } from '../types/player.ts'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { RoomEventClient } from '../events/RoomEventClient.ts'
 import { getNumberFromLocalStorage, setNumberToLocalStorage } from '../utils/localStorage.ts'
 
-interface LiveData {
+interface ChatMessage {
 
+}
+
+interface LiveData {
+  room_id: number
+  status: 'waiting_for_players'
+  chat_messages: ChatMessage[]
+  players: Player[]
 }
 
 export function useGameRoomLiveData(roomId: number) {
   const [isLoading, setIsLoading] = useState(true)
   const roomEventClient = useRef(new RoomEventClient({
-    urlBase: import.meta.env.WS_URL_BASE,
+    urlBase: import.meta.env.VITE_WS_URL_BASE,
     lastSeq: getNumberFromLocalStorage(`room:${roomId}:last_seq`, null),
     roomId,
   }))
@@ -33,8 +41,9 @@ export function useGameRoomLiveData(roomId: number) {
   }, [roomId])
 
   useEffect(() => {
+    roomEventClient.current.connect()
     return roomEventClient.current.on(handleEvent)
   }, [])
 
-  return useMemo(() => ({ liveData, isLoading }), [liveData, isLoading])
+  return useMemo(() => ({ data: liveData, isLoading }), [liveData, isLoading])
 }

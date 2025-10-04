@@ -30,7 +30,7 @@ class RoomStreamerService:
         if last_seq is not None and last_seq < current_last:
             missed, _ = await store.read_from(room_id, after_seq=last_seq)
             for e in missed:
-                await send_ws_message_event(e)
+                await send_ws_message_event(ws, e)
 
     @staticmethod
     async def stream_room_events(
@@ -41,4 +41,4 @@ class RoomStreamerService:
         async with event_bus.subscribe(room_id) as queue:
             while True:
                 e = await queue.get()
-                await send_ws_message_event(e)
+                await send_ws_message_event(ws, e)

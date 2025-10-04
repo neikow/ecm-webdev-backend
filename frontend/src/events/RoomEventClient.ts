@@ -30,8 +30,8 @@ export class RoomEventClient {
     lastSeq?: number | null
   }) {
     this.listeners = new Set()
-    this.url = `${config.urlBase.replace(/\/$/, '')}/ws/rooms/${config.roomId}${
-      config.lastSeq ? `?last_seq=${config.lastSeq}` : ''
+    this.url = `${config.urlBase.replace(/\/$/, '')}/ws/game_rooms/${config.roomId}?${
+      config.lastSeq ? `last_seq=${config.lastSeq}` : ''
     }`
     this.roomId = config.roomId
     this.lastSeq = config.lastSeq ?? null
@@ -43,6 +43,7 @@ export class RoomEventClient {
       const msg: ServerMessage = JSON.parse(e.data)
       if (msg.type === 'snapshot') {
         this.lastSeq = msg.last_seq
+        this.listeners.forEach(listener => listener(msg))
       }
       else if (msg.type === 'event') {
         this.lastSeq = msg.seq
@@ -63,7 +64,7 @@ export class RoomEventClient {
     const seq: number = this.lastSeq ?? Number.parseInt(
       localStorage.getItem(`room:${this.roomId}:last_seq`) || '0',
     )
-    this.url = this.url.replace(/(&last_seq=\d+)?$/, `&last_seq=${seq}`)
+    this.url = this.url.replace(/(last_seq=\d+)?$/, `last_seq=${seq}`)
     this.connect()
   }
 

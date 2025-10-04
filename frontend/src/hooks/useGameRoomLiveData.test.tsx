@@ -62,7 +62,7 @@ describe('useGameRoomLiveData', () => {
     const { result } = renderHook(() => useGameRoomLiveData(roomId))
 
     expect(result.current.isLoading).toBe(true)
-    expect(result.current.liveData).toBeUndefined()
+    expect(result.current.data).toBeUndefined()
 
     const { __getLastInstance } = (await import('../events/RoomEventClient.ts')) as unknown as MockRoomEventClientModule
     const client = __getLastInstance()
@@ -73,7 +73,7 @@ describe('useGameRoomLiveData', () => {
     })
 
     expect(result.current.isLoading).toBe(false)
-    expect(result.current.liveData).toEqual(snapshot)
+    expect(result.current.data).toEqual(snapshot)
     expect(setNumberToLocalStorage).toHaveBeenCalledWith(`room:${roomId}:last_seq`, 7)
   })
 
@@ -91,7 +91,7 @@ describe('useGameRoomLiveData', () => {
       client?.emit({ type: 'event', seq: 4, event: { foo: 'bar' } })
     })
 
-    expect(result.current.liveData).toEqual({ x: 'y' })
+    expect(result.current.data).toEqual({ x: 'y' })
     expect(setNumberToLocalStorage).toHaveBeenCalledWith(`room:${roomId}:last_seq`, 4)
   })
 

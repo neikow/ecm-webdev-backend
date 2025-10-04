@@ -19,7 +19,7 @@ vi.mock('../utils/localStorage.ts', () => ({
 }))
 
 beforeEach(() => {
-  vi.stubEnv('WS_URL_BASE', 'ws://test')
+  vi.stubEnv('VITE_WS_URL_BASE', 'ws://test')
 })
 
 afterEach(() => {

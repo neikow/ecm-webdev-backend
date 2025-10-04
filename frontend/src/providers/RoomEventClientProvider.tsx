@@ -11,7 +11,7 @@ export function RoomEventClientProvider(props: {
   roomId: number
 }) {
   const client = useMemo(() => new RoomEventClient({
-    urlBase: import.meta.env.WS_URL_BASE,
+    urlBase: import.meta.env.VITE_WS_URL_BASE,
     roomId: props.roomId,
     lastSeq: getNumberFromLocalStorage(`room:${props.roomId}:last_seq`, null),
   }), [props.roomId])

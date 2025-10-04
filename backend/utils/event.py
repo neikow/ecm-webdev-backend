@@ -10,5 +10,5 @@ async def send_ws_message_event(ws: WebSocket, event: BaseEvent) -> None:
             type="event",
             seq=event.seq,
             event=event
-        ).model_dump()
+        ).model_dump(mode='json')
     )

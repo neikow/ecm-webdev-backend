@@ -28,6 +28,7 @@ async def game_room_events(
         snapshot_builder: Annotated[SnapshotBuilderBase, Depends(get_snapshot_builder)],
         event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ):
+    print("WebSocket connection attempt", room_id, current_user)
     if not current_user or current_user.room_id != room_id:
         await websocket.close(code=4403)
         return

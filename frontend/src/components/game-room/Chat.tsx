@@ -1,8 +1,10 @@
+import type { Player } from '../../types/player.ts'
 import type { ClassValue } from '../../utils/cn.ts'
 import { cn } from '../../utils/cn.ts'
 
 interface ChatProps {
   className?: ClassValue
+  players?: Player
 }
 
 export function Chat(props: ChatProps) {
@@ -10,7 +12,7 @@ export function Chat(props: ChatProps) {
     <div
       className={
         cn(
-          'card bg-base-100 shadow-md p-4 flex flex-col',
+          'card bg-base-200 shadow-md p-4 flex flex-col',
           props.className,
         )
       }

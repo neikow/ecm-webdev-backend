@@ -7,6 +7,12 @@ export default defineConfig({
   envDir: '..',
   server: {
     proxy: {
+      '/api/ws': {
+        target: 'ws://localhost:8000/ws',
+        ws: true,
+        changeOrigin: true,
+        rewrite: path => path.replace(/^\/api\/ws/, ''),
+      },
       '/api': {
         target: 'http://localhost:8000',
         changeOrigin: true,

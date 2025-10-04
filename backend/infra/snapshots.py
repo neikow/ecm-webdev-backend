@@ -1,13 +1,16 @@
 import enum
+from logging import getLogger
 from typing import Literal
 
 from pydantic import BaseModel, Field
 
 from backend.domain.events import BaseEvent, RoomEvent
+from backend.models.game_player_model import UserRole
 
 
 class SnapshotPlayer(BaseModel):
     user_name: str
+    role: UserRole
     id: str
 
 
@@ -33,20 +36,26 @@ class SnapshotBase(BaseModel):
     chat_messages: list[SnapshotChatMessage] = Field(default_factory=lambda: [])
 
 
+logger = getLogger(__name__)
+
+
 class SnapshotBuilderBase:
     def handle_external_event(self, event: BaseEvent, state: SnapshotBase) -> SnapshotBase:
         raise NotImplementedError
 
     async def build(self, room_id: int, events: list[BaseEvent]) -> SnapshotBase:
+        logger.info(f"Building snapshot for room_id={room_id} with {len(events)} events")
         state = SnapshotBase(
             room_id=room_id,
         )
         player_names: dict[str, str] = {}
+        player_roles: dict[str, UserRole] = {}
         players: list[str] = list()
         for e in events:
             if e.type == RoomEvent.PLAYER_JOINED:
                 players.append(e.data["user_id"])
                 player_names[e.data["user_id"]] = e.data["user_name"]
+                player_roles[e.data["user_id"]] = UserRole(e.data['role'])
             elif e.type == RoomEvent.PLAYER_LEFT:
                 players.remove(e.data["user_id"])
             elif e.type == RoomEvent.ROOM_CLOSED:
@@ -66,8 +75,9 @@ class SnapshotBuilderBase:
 
         state.players = [
             SnapshotPlayer(
+                id=_id,
                 user_name=player_names[_id],
-                id=_id
+                role=player_roles[_id]
             ) for _id in players
         ]
         return state

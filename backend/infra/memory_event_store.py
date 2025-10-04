@@ -1,7 +1,10 @@
 import asyncio
 from collections import defaultdict
+from logging import getLogger
 
 from backend.domain.events import BaseEvent
+
+logger = getLogger(__name__)
 
 
 class MemoryEventStore:
@@ -23,6 +26,7 @@ class MemoryEventStore:
                 actor_id=actor_id,
                 data=data or {}
             )
+            logger.info(f"Appending event: {event.model_dump()}")
             self._events[room_id].append(event)
             return event
 
@@ -33,7 +37,9 @@ class MemoryEventStore:
             after_seq: int | None = None,
             limit: int = 500
     ) -> tuple[
-        list[BaseEvent], int]:
+        list[BaseEvent], int
+    ]:
+        logger.info(f"Reading events for room_id={room_id}")
         events = self._events.get(room_id, [])
         if after_seq is None:
             slice_ = events[-limit:]
