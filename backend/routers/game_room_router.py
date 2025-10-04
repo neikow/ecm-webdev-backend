@@ -3,7 +3,6 @@ from pydantic import BaseModel
 from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
-from starlette.websockets import WebSocket
 
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
@@ -52,6 +51,16 @@ async def create_game_room(
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
         # Once again I still don't understand why this is necessary
         game_room_copy = game_room.model_copy()
+
+        if not game_room.id:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail={
+                    "code": ErrorCode.INTERNAL_ERROR,
+                    "message": "Failed to create game room",
+                },
+            )
+
         player = GameRoomService.add_user(
             session,
             game_room.id,
@@ -240,18 +249,3 @@ async def leave_game_room(
                 "message": "You are not in a game room",
             },
         )
-
-
-def dispatch(websocket: WebSocket, game_room_id: int, data: dict) -> None:
-    pass
-
-
-@router.websocket("/{game_room_id}/ws")
-async def websocket_endpoint(
-        game_room_id: int,
-        websocket: WebSocket
-):
-    await websocket.accept()
-    while True:
-        data = await websocket.receive_json()
-        dispatch(websocket, game_room_id, data)

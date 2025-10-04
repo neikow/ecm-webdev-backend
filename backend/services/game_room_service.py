@@ -1,7 +1,6 @@
 from typing import Sequence
 
-from sqlalchemy.sql.functions import count
-from sqlmodel import Session, select
+from sqlmodel import Session, select, func
 
 from backend.models.game_player_model import UserRole, GamePlayerModel
 from backend.models.game_room_model import GameType, GameRoomModel
@@ -79,9 +78,12 @@ class GameRoomService:
     def add_user(session: Session, game_room_id: int, role: UserRole, user_name: str) -> GamePlayerModel:
         game_room = GameRoomService.get_or_error(session, game_room_id)
 
+        statement = select(
+            func.count()
+        ).where(GamePlayerModel.room_id == game_room_id)
+        current_users_count = session.scalar(statement) or 0
+        
         max_users = get_room_max_users(game_room.game_type)
-        statement = select(count(GamePlayerModel.id)).where(GamePlayerModel.room_id == game_room_id)
-        current_users_count = session.scalar(statement)
 
         if current_users_count >= max_users:
             raise GameRoomService.GameRoomIsFull

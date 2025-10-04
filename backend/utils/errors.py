@@ -4,6 +4,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class ErrorCode(str, enum.Enum):
+    INTERNAL_ERROR = "internal_error"
     ALREADY_IN_GAME_ROOM = "already_in_game_room"
     NOT_IN_GAME_ROOM = "not_in_game_room"
     PASSWORD_USED = "password_used"

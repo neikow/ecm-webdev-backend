@@ -180,6 +180,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "syrupy" },
     { name = "time-machine" },
+    { name = "types-nanoid" },
 ]
 
 [package.metadata]
@@ -207,6 +208,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=1.2.0" },
     { name = "syrupy", specifier = ">=5.0.0" },
     { name = "time-machine", specifier = ">=2.19.0" },
+    { name = "types-nanoid", specifier = ">=2.0.0.20240601" },
 ]
 
 [[package]]
@@ -736,6 +738,15 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/73/b9/3ea4951e8293b0643feb98c0b9a176fa822154f1810835db3f282968ab10/time_machine-2.19.0-cp314-cp314t-win32.whl", hash = "sha256:0fe81bae55b7aefc2c2a34eb552aa82e6c61a86b3353a3c70df79b9698cb02ca", size = 17743, upload-time = "2025-08-19T17:21:51.948Z" },
     { url = "https://files.pythonhosted.org/packages/e4/8b/cd802884ca8a98e2b6cdc2397d57dd12ff8a7d1481e06fc3fad3d4e7e5ff/time_machine-2.19.0-cp314-cp314t-win_amd64.whl", hash = "sha256:7253791b8d7e7399fbeed7a8193cb01bc004242864306288797056badbdaf80b", size = 18956, upload-time = "2025-08-19T17:21:52.997Z" },
     { url = "https://files.pythonhosted.org/packages/c6/49/cabb1593896082fd55e34768029b8b0ca23c9be8b2dc127e0fc14796d33e/time_machine-2.19.0-cp314-cp314t-win_arm64.whl", hash = "sha256:536bd1ac31ab06a1522e7bf287602188f502dc19d122b1502c4f60b1e8efac79", size = 17068, upload-time = "2025-08-19T17:21:54.064Z" },
+]
+
+[[package]]
+name = "types-nanoid"
+version = "2.0.0.20240601"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/20/f2/b42b17bf27e90aa8dd9a06721b35804842ca72afac294b700b4fa23ffc92/types-nanoid-2.0.0.20240601.tar.gz", hash = "sha256:7246ee685ed55a367fc160d87cde75a550296ecca26e0602619552dae72efda0", size = 2614, upload-time = "2024-06-01T02:27:23.985Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/2c/a584a285447ecb1997cda73477550068f461885e1676a4ac271ad16f8078/types_nanoid-2.0.0.20240601-py3-none-any.whl", hash = "sha256:5219f721b80748d82b14edd5429cc888d32eb816966d2a4719730ef3f2e3a417", size = 3862, upload-time = "2024-06-01T02:27:22.949Z" },
 ]
 
 [[package]]

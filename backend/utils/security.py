@@ -32,7 +32,7 @@ class Token(BaseModel):
     token_type: str
 
 
-def create_access_token(data: GamePlayerModel, expires_delta: timezone | None = None) -> str:
+def create_access_token(data: GamePlayerModel, expires_delta: timedelta | None = None) -> str:
     to_encode = data.model_dump()
     if expires_delta:
         expire = datetime.now(timezone.utc) + expires_delta
