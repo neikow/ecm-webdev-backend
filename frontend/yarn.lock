@@ -845,7 +845,7 @@
 
 "@tailwindcss/vite@^4.1.14":
   version "4.1.14"
-  resolved "https://registry.npmjs.org/@tailwindcss/vite/-/vite-4.1.14.tgz"
+  resolved "https://registry.yarnpkg.com/@tailwindcss/vite/-/vite-4.1.14.tgz#94d0fb87b11030138a45cef8ae9c3a7b080d4007"
   integrity sha512-BoFUoU0XqgCUS1UXWhmDJroKKhNXeDzD7/XwabjkDIAbMnc4ULn5e2FuEuBbhZ6ENZoSYzKlzvZ44Yr6EUDUSA==
   dependencies:
     "@tailwindcss/node" "4.1.14"
@@ -3195,7 +3195,7 @@ tailwind-merge@^3.3.1:
 
 tailwindcss@4.1.14, tailwindcss@^4.1.14:
   version "4.1.14"
-  resolved "https://registry.npmjs.org/tailwindcss/-/tailwindcss-4.1.14.tgz"
+  resolved "https://registry.yarnpkg.com/tailwindcss/-/tailwindcss-4.1.14.tgz#a5907cc2202a2a1f5f15bac6f2031e53117e43a8"
   integrity sha512-b7pCxjGO98LnxVkKjaZSDeNuljC4ueKUddjENJOADtubtdo8llTaJy7HwBMeLNSSo2N5QIAgklslK1+Ir8r6CA==
 
 tapable@^2.2.0:
