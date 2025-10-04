@@ -110,6 +110,8 @@ export function CreateGameRoomPage() {
     }
   }, [activeGameRoomId, setError])
 
+  const hasErrors = errors.root || errors.game_type || errors.user_name || errors.password
+
   return (
     <div className="min-h-screen">
       <div className="hero min-h-screen bg-base-200">
@@ -171,8 +173,17 @@ export function CreateGameRoomPage() {
                   <span className="text-error mt-2 text-sm text-center w-full">{errors.password.message}</span>
                 )}
               </div>
-              <button disabled={isLoading} className="btn btn-primary mx-auto" type="submit">
-                Create Room
+              <button
+                disabled={isLoading}
+                className={cn({
+                  'btn mx-auto': true,
+                  'btn-disabled': isLoading,
+                  'btn-primary': !isLoading && !hasErrors,
+                  'btn-error': !isLoading && hasErrors,
+                })}
+                type="submit"
+              >
+                Create
               </button>
               {errors.root && (
                 <span className="text-error text-sm text-center w-full">{errors.root.message}</span>

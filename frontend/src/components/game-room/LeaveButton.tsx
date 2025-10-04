@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
-import { cn } from '../utils/cn.ts'
+import { cn } from '../../utils/cn.ts'
 
-export function LeaveGameRoomButton() {
+export function LeaveButton() {
   const navigate = useNavigate()
   const [isError, setIsError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
