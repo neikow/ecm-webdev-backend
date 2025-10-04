@@ -1,3 +1,4 @@
+import pytest
 from starlette import status
 
 from backend.models.game_player_model import GamePlayerModel, UserRole
@@ -178,15 +179,26 @@ def test_join_game_room(session, client):
     assert data["id"] is not None
 
 
-def test_fail_to_join_full_game_room(session, client):
+@pytest.mark.asyncio
+async def test_fail_to_join_full_game_room(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
     game_room = GameRoomService.create(
         session, game_type=GameType.connect_four, password="secret"
     )
     max_users = get_room_max_users(game_room.game_type)
 
     for _ in range(max_users):
-        GameRoomService.add_user(
-            session=session, game_room_id=game_room.id, role=UserRole.player, user_name="player"
+        await GameRoomService.add_user(
+            session=session,
+            game_room_id=game_room.id,
+            role=UserRole.player,
+            user_name="player",
+            event_store=mock_event_store,
+            event_bus=mock_event_bus,
         )
 
     response = client.post(f"/game_rooms/join/{game_room.id}?password=secret&user_name=latecomer")
@@ -196,15 +208,23 @@ def test_fail_to_join_full_game_room(session, client):
     assert data["detail"]["message"] == "The game room is full"
 
 
-def test_leave_game_room(session, client):
+@pytest.mark.asyncio
+async def test_leave_game_room(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
     game_room = GameRoomService.create(
         session, game_type=GameType.connect_four, password="<PASSWORD>"
     )
-    player = GameRoomService.add_user(
+    player = await GameRoomService.add_user(
         session=session,
         game_room_id=game_room.id,
         role=UserRole.player,
-        user_name="admin"
+        user_name="admin",
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
     )
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(player)
 

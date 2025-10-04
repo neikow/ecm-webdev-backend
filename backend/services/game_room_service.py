@@ -2,6 +2,9 @@ from typing import Sequence
 
 from sqlmodel import Session, select, func
 
+from backend.domain.events import RoomEvent
+from backend.events.bus import EventBus
+from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_player_model import UserRole, GamePlayerModel
 from backend.models.game_room_model import GameType, GameRoomModel
 from backend.utils.game_utils import get_room_max_users
@@ -75,14 +78,21 @@ class GameRoomService:
         return game_rooms
 
     @staticmethod
-    def add_user(session: Session, game_room_id: int, role: UserRole, user_name: str) -> GamePlayerModel:
+    async def add_user(
+            session: Session,
+            game_room_id: int,
+            role: UserRole,
+            user_name: str,
+            event_store: MemoryEventStore,
+            event_bus: EventBus,
+    ) -> GamePlayerModel:
         game_room = GameRoomService.get_or_error(session, game_room_id)
 
         statement = select(
             func.count()
         ).where(GamePlayerModel.room_id == game_room_id)
         current_users_count = session.scalar(statement) or 0
-        
+
         max_users = get_room_max_users(game_room.game_type)
 
         if current_users_count >= max_users:
@@ -98,15 +108,42 @@ class GameRoomService:
         session.commit()
         session.refresh(game_player)
 
+        e = await event_store.append(
+            room_id=game_room_id,
+            event_type=RoomEvent.PLAYER_JOINED,
+            data={
+                "user_id": game_player.id,
+                "user_name": game_player.user_name,
+                "role": game_player.role,
+            }
+        )
+        await event_bus.publish(e)
+
         return game_player
 
     @staticmethod
-    def remove_user(session: Session, player_id: str) -> bool:
+    async def remove_user(
+            session: Session,
+            player_id: str,
+            event_store: MemoryEventStore,
+            event_bus: EventBus,
+    ) -> bool:
         statement = select(GamePlayerModel).where(GamePlayerModel.id == player_id)
         game_player = session.exec(statement).first()
         if game_player:
+            user_id = game_player.id
             session.delete(game_player)
             session.commit()
+
+            e = await event_store.append(
+                room_id=game_player.room_id,
+                event_type=RoomEvent.PLAYER_LEFT,
+                data={
+                    "user_id": user_id,
+                }
+            )
+
+            await event_bus.publish(e)
             return True
 
         return False

@@ -4,6 +4,9 @@ from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
 
+from backend.dependencies import get_event_store, get_event_bus
+from backend.events.bus import EventBus
+from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
 from backend.services.game_room_service import (
@@ -36,6 +39,8 @@ async def create_game_room(
         game_data: CreateGameRoomData,
         session: Session = Depends(get_session),
         player_data: GamePlayerModel | None = Depends(current_player_data),
+        event_store: MemoryEventStore = Depends(get_event_store),
+        event_bus: EventBus = Depends(get_event_bus)
 ) -> CreateGameRoomResponse:
     if player_data is not None:
         raise HTTPException(
@@ -61,11 +66,13 @@ async def create_game_room(
                 },
             )
 
-        player = GameRoomService.add_user(
+        player = await GameRoomService.add_user(
             session,
             game_room.id,
             UserRole.admin,
-            game_data.user_name
+            game_data.user_name,
+            event_store,
+            event_bus
         )
         add_authorization_cookie(
             response,
@@ -184,6 +191,8 @@ async def join_game_room(
         user_name: str,
         response: Response,
         session: Session = Depends(get_session),
+        event_store: MemoryEventStore = Depends(get_event_store),
+        event_bus: EventBus = Depends(get_event_bus)
 ) -> GamePlayerModel:
     game_room = GameRoomService.find_by_password(session, password)
     if not game_room:
@@ -196,11 +205,13 @@ async def join_game_room(
         )
 
     try:
-        user = GameRoomService.add_user(
+        user = await GameRoomService.add_user(
             session=session,
             game_room_id=game_room_id,
             role=UserRole.player,
-            user_name=user_name
+            user_name=user_name,
+            event_store=event_store,
+            event_bus=event_bus
         )
         add_authorization_cookie(response, create_access_token(user))
         return user
@@ -225,6 +236,8 @@ async def leave_game_room(
         response: Response,
         session: Session = Depends(get_session),
         player_data: GamePlayerModel | None = Depends(current_player_data),
+        event_store: MemoryEventStore = Depends(get_event_store),
+        event_bus: EventBus = Depends(get_event_bus)
 ) -> LeaveGameRoomResponse:
     if player_data is None:
         raise HTTPException(
@@ -235,7 +248,12 @@ async def leave_game_room(
             },
         )
     try:
-        GameRoomService.remove_user(session, player_data.id)
+        await GameRoomService.remove_user(
+            session=session,
+            player_id=player_data.id,
+            event_store=event_store,
+            event_bus=event_bus,
+        )
 
         remove_authorization_cookie(response)
         return LeaveGameRoomResponse(

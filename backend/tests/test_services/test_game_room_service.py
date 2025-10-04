@@ -120,25 +120,42 @@ def test_find_game_room_by_password(session):
     assert found_game_room.game_type == create_game_room.game_type
 
 
-def test_fail_to_add_user_if_game_does_not_exist(session):
+@pytest.mark.asyncio
+async def test_fail_to_add_user_if_game_does_not_exist(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
     with pytest.raises(GameRoomService.GameRoomDoesNotExist):
-        GameRoomService.add_user(
+        await GameRoomService.add_user(
             session=session,
             game_room_id=-1,
             role=UserRole.player,
             user_name="player",
+            event_bus=mock_event_bus,
+            event_store=mock_event_store,
         )
 
 
-def test_add_user_to_game_room(session):
+@pytest.mark.asyncio
+async def test_add_user_to_game_room(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
     game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
     user_name = "admin"
 
-    player = GameRoomService.add_user(
+    mock_event_store.should_call('append').once()
+    mock_event_bus.should_call('publish').once()
+
+    player = await GameRoomService.add_user(
         session=session,
         game_room_id=game_room.id,
         role=UserRole.player,
-        user_name=user_name
+        user_name=user_name,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
     )
 
     assert player is not None
@@ -147,35 +164,51 @@ def test_add_user_to_game_room(session):
     assert player.role == UserRole.player
 
 
-def test_add_user_to_a_full_game_room(session):
+@pytest.mark.asyncio
+async def test_add_user_to_a_full_game_room(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
     game_type = GameType.connect_four
     game_room = GameRoomService.create(session, game_type, "securepassword")
     user_name = "player"
     for _ in range(get_room_max_users(game_type)):
-        GameRoomService.add_user(
-            session=session,
-            game_room_id=game_room.id,
-            role=UserRole.player,
-            user_name=user_name
-        )
-    with pytest.raises(GameRoomService.GameRoomIsFull):
-        GameRoomService.add_user(
+        await GameRoomService.add_user(
             session=session,
             game_room_id=game_room.id,
             role=UserRole.player,
             user_name=user_name,
+            event_bus=mock_event_bus,
+            event_store=mock_event_store,
+        )
+    with pytest.raises(GameRoomService.GameRoomIsFull):
+        await GameRoomService.add_user(
+            session=session,
+            game_room_id=game_room.id,
+            role=UserRole.player,
+            user_name=user_name,
+            event_bus=mock_event_bus,
+            event_store=mock_event_store,
         )
 
 
-def test_remove_player_from_game_room(session):
+@pytest.mark.asyncio
+async def test_remove_player_from_game_room(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
     game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
     user_name = "player"
 
-    player = GameRoomService.add_user(
+    player = await GameRoomService.add_user(
         session=session,
         game_room_id=game_room.id,
         role=UserRole.player,
-        user_name=user_name
+        user_name=user_name,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
     )
 
     assert player is not None
@@ -183,14 +216,29 @@ def test_remove_player_from_game_room(session):
     assert player.room_id == game_room.id
     assert player.role == UserRole.player
 
-    result = GameRoomService.remove_user(session=session, player_id=player.id)
+    result = await GameRoomService.remove_user(
+        session=session,
+        player_id=player.id,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store
+    )
 
     assert result is True
     statement = select(GamePlayerModel.id).where(GamePlayerModel.id == player.id)
     assert session.exec(statement).first() is None
 
 
-def test_fail_to_remove_non_existing_player(session):
-    result = GameRoomService.remove_user(session=session, player_id="-non-existing-id")
+@pytest.mark.asyncio
+async def test_fail_to_remove_non_existing_player(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
+    result = await GameRoomService.remove_user(
+        session=session,
+        player_id="-non-existing-id",
+        event_bus=mock_event_bus,
+        event_store=mock_event_store
+    )
 
     assert result is False
