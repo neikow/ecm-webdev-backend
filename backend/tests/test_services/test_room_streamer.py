@@ -314,7 +314,8 @@ async def test_room_streamer_publishes_a_message_event_to_bus(
                 actor_id=current_user.id,
                 type=RoomEvent.MESSAGE_SENT,
                 data={
-                    "text": message_value
+                    "sender_id": current_user.id,
+                    "value": message_value
                 },
                 seq=1,  # seq is set by the event store, so it will be 1 here
             )

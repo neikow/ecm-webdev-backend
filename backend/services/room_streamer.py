@@ -104,7 +104,8 @@ class RoomStreamerService:
                     event_type=RoomEvent.MESSAGE_SENT,
                     actor_id=current_user.id,
                     data={
-                        "text": text,
+                        "value": text,
+                        "sender_id": current_user.id,
                     }
                 )
                 await event_bus.publish(event=event)
