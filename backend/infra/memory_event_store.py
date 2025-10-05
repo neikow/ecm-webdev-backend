@@ -15,7 +15,13 @@ class MemoryEventStore:
         self._events = defaultdict(list)
         self._locks = defaultdict(asyncio.Lock)
 
-    async def append(self, room_id: int, event_type: str, data: dict | None = None, actor_id: str | None = None):
+    async def append(
+            self,
+            room_id: int,
+            event_type: str,
+            data: dict | None = None,
+            actor_id: str | None = None
+    ) -> BaseEvent:
         lock = self._locks[room_id]
         async with lock:
             seq = len(self._events[room_id]) + 1

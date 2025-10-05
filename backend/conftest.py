@@ -10,6 +10,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from backend.dependencies import get_event_bus, get_event_store
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.snapshots import SnapshotBuilderBase
 from backend.server import app
 from backend.utils.db import get_session
 
@@ -32,6 +33,11 @@ def mock_event_bus():
 @pytest.fixture()
 def mock_event_store():
     return flexmock(MemoryEventStore())
+
+
+@pytest.fixture()
+def mock_snapshot_builder():
+    return flexmock(SnapshotBuilderBase())
 
 
 @pytest.fixture(name="client")

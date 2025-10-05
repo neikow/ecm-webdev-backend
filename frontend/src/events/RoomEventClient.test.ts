@@ -63,4 +63,13 @@ describe('roomEventClient', () => {
     client.close()
     expect(ws.close).toHaveBeenCalled()
   })
+
+  it('should allow sending messages to server', () => {
+    const client = new RoomEventClient({ urlBase: 'ws://localhost', roomId: 6 })
+    client.connect()
+    const ws = (client as any).ws as MockWebSocket
+    client.send({ type: 'test', payload: 'data' })
+    expect(ws.send).toHaveBeenCalledOnce()
+    expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test', payload: 'data' }))
+  })
 })

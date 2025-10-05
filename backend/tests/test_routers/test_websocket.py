@@ -45,12 +45,21 @@ def test_websocket_connection_restores_history(client):
         )
     )
 
-    flexmock(RoomStreamerService).should_receive("restore_event_history").with_args(
-        WebSocket, room_id, None, MemoryEventStore, SnapshotBuilderBase
-    ).and_return(build_future(None)).once()
+    flexmock(RoomStreamerService).should_receive("send_current_room_state").with_args(
+        ws=WebSocket,
+        room_id=room_id,
+        store=MemoryEventStore,
+        snapshot_builder=SnapshotBuilderBase
+    ).and_return(
+        build_future(None)
+    ).once()
     flexmock(RoomStreamerService).should_receive("stream_room_events").with_args(
-        WebSocket, room_id, EventBus
-    ).and_return(build_future(None)).once()
+        ws=WebSocket,
+        room_id=room_id,
+        event_bus=EventBus
+    ).and_return(
+        build_future(None)
+    ).once()
 
     with client.websocket_connect(f'/ws/game_rooms/{room_id}') as ws:
         assert ws is not None

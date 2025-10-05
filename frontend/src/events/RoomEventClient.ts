@@ -59,6 +59,12 @@ export class RoomEventClient {
     }
   }
 
+  send(data: any) {
+    this.ws?.send(
+      JSON.stringify(data),
+    )
+  }
+
   reconnect() {
     this.retries += 1
     const seq: number = this.lastSeq ?? Number.parseInt(

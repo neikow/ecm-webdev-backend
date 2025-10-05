@@ -146,3 +146,17 @@ async def test_snapshot_builder_calls_handle_external_event_on_unknown_event_typ
     ).once()
 
     await snapshot_builder.build(room_id, [event])
+
+
+@pytest.mark.asyncio
+async def test_building_a_snapshot_with_unknown_event_raises_an_error_on_base_snapshot_builder(
+        mock_snapshot_builder
+):
+    with pytest.raises(NotImplementedError):
+        await mock_snapshot_builder.build(0, [
+            BaseEvent(
+                room_id=0,
+                type="-unknown_event_type",
+                seq=1,
+            )
+        ])
