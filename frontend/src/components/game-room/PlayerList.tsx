@@ -1,10 +1,10 @@
 import type { Player } from '../../types/player.ts'
-import type { ClassValue } from '../../utils/cn.ts'
-import { cn } from '../../utils/cn.ts'
+import type { ClassValue } from '../../utils/classes.ts'
+import { useRoomPlayers } from '../../hooks/useRoomPlayers.tsx'
+import { cn } from '../../utils/classes.ts'
 
 interface PlayerListProps {
   className?: ClassValue
-  players?: Player[]
 }
 
 function PlayerListItem(props: { player: Player }) {
@@ -22,6 +22,8 @@ function PlayerListItem(props: { player: Player }) {
 }
 
 export function PlayerList(props: PlayerListProps) {
+  const players = useRoomPlayers()
+
   return (
     <div
       className={cn(
@@ -33,12 +35,12 @@ export function PlayerList(props: PlayerListProps) {
         <span>Players</span>
         <div className="badge badge-soft badge-primary select-none">
           {
-            props.players?.length ?? 0
+            players.length ?? 0
           }
         </div>
       </div>
       <ul className="flex flex-col gap-1 overflow-y-auto">
-        {props.players?.map((player, index) => (
+        {players.map((player, index) => (
           <PlayerListItem key={`player-${index}`} player={player} />
         ))}
       </ul>

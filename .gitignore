@@ -13,3 +13,4 @@ dist
 
 # Local
 database.db
+coverage

@@ -68,8 +68,26 @@ describe('roomEventClient', () => {
     const client = new RoomEventClient({ urlBase: 'ws://localhost', roomId: 6 })
     client.connect()
     const ws = (client as any).ws as MockWebSocket
-    client.send({ type: 'test', payload: 'data' })
+    client.send({ type: 'ping' })
     expect(ws.send).toHaveBeenCalledOnce()
-    expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'test', payload: 'data' }))
+    expect(ws.send).toHaveBeenCalledWith(JSON.stringify({ type: 'ping' }))
+  })
+
+  it('should return an unsubscribe function from on', () => {
+    const client = new RoomEventClient({ urlBase: 'ws://localhost', roomId: 7 })
+    const listener = vi.fn()
+    const unsubscribe = client.on(listener)
+    client.connect()
+    const ws = (client as any).ws as MockWebSocket
+    ws.onmessage!({ data: JSON.stringify({ type: 'ping' }) })
+    expect(listener).toHaveBeenCalledTimes(1)
+    unsubscribe()
+    ws.onmessage!({ data: JSON.stringify({ type: 'ping' }) })
+    expect(listener).toHaveBeenCalledTimes(1)
+  })
+
+  it('should throw if send is called before connect', () => {
+    const client = new RoomEventClient({ urlBase: 'ws://localhost', roomId: 8 })
+    expect(() => client.send({ type: 'ping' })).toThrow('WebSocket is not connected')
   })
 })

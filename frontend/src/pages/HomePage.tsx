@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { NavLink, useNavigate } from 'react-router'
 import { z } from 'zod'
-import { cn } from '../utils/cn.ts'
+import { cn } from '../utils/classes.ts'
 
 export const GameRoomPasswordSchema = z.string().min(5, 'Room password muse be at least 5 characters long').max(32, 'Room password is too long')
 

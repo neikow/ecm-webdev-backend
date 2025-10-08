@@ -1,4 +1,6 @@
+import json
 import time
+from logging import getLogger
 
 from fastapi import WebSocket
 
@@ -9,6 +11,8 @@ from backend.infra.snapshots import SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel
 from backend.routers.websocket_schemas import WSMessageSnapshot, WEMessageError, ClientMessageType, WSMessageEvent
 from backend.utils.errors import ErrorCode
+
+logger = getLogger(__name__)
 
 
 class RoomStreamerService:
@@ -82,6 +86,8 @@ class RoomStreamerService:
                     "type field is required"
                 )
                 continue
+
+            logger.info(f"New ws message: {json.dumps(msg)}")
 
             if typ == ClientMessageType.PING:
                 await ws.send_json({

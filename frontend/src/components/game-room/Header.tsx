@@ -1,8 +1,10 @@
-import type { GameRoomData } from '../../pages/GameRoomPage.tsx'
+import type { NavigateFunction } from 'react-router'
+import type { StaticGameRoomData } from '../../pages/GameRoomPage.tsx'
 import { LeaveButton } from './LeaveButton.tsx'
 
-interface HeaderProps {
-  data: GameRoomData | undefined
+export interface HeaderProps {
+  data?: StaticGameRoomData
+  navigate: NavigateFunction
 }
 
 export function Header(props: HeaderProps) {
@@ -14,7 +16,7 @@ export function Header(props: HeaderProps) {
           : (
               <h1 className="text-4xl font-bold text-secondary">
                 Game Room #
-                {props.data.id}
+                {props.data.game_room.id}
               </h1>
             )}
       </div>
@@ -25,11 +27,11 @@ export function Header(props: HeaderProps) {
               <span className="font-sans select-none">
                 Password:
                 <span className="select-all font-mono font-bold p-2 border border-white/20 ml-2 rounded">
-                  {props.data.password}
+                  {props.data.game_room.password}
                 </span>
               </span>
             )}
-        <LeaveButton />
+        <LeaveButton navigate={props.navigate} />
       </div>
     </header>
   )

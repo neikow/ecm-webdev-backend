@@ -1,7 +1,51 @@
+import type { Player } from '../types/player.ts'
+
+type RoomStatus = 'waiting_for_players' | 'waiting_for_start' | 'waiting_for_player' | 'closed'
+
+export interface SnapshotData {
+  room_id: number
+  status: RoomStatus
+  players: Player[]
+  chat_messages: {
+    type: 'text'
+    sender_id: string
+    value: string
+  }[]
+}
+
 export type ServerMessage
-  = | { type: 'snapshot', last_seq: number, data: any }
-    | { type: 'event', seq: number, event: any }
-    | { type: 'ping' }
+  = | { type: 'snapshot', last_seq: number, data: SnapshotData }
+    | {
+      type: 'event'
+      seq: number
+      event: {
+        type: 'message.sent'
+        room_id: number
+        actor_id: string
+        data: {
+          sender_id: string
+          value: string
+        }
+        seq: number
+      } | {
+        type: 'player.joined'
+        data: Player
+      }
+      | {
+        type: 'player.left'
+        data: {
+          id: string
+        }
+      }
+    }
+    | { type: 'ping', timestamp: number }
+
+export type ClientMessage = {
+  type: 'chat_message'
+  text: string
+} | {
+  type: 'ping'
+}
 
 export type Listener = (msg: ServerMessage) => void
 
@@ -59,8 +103,11 @@ export class RoomEventClient {
     }
   }
 
-  send(data: any) {
-    this.ws?.send(
+  send(data: ClientMessage) {
+    if (!this.ws) {
+      throw new Error('WebSocket is not connected')
+    }
+    this.ws.send(
       JSON.stringify(data),
     )
   }

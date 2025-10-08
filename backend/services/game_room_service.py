@@ -1,6 +1,7 @@
 from typing import Sequence
 
-from sqlmodel import Session, select, func
+from sqlalchemy import func
+from sqlmodel import Session, select
 
 from backend.domain.events import RoomEvent
 from backend.events.bus import EventBus
@@ -112,7 +113,7 @@ class GameRoomService:
             room_id=game_room_id,
             event_type=RoomEvent.PLAYER_JOINED,
             data={
-                "user_id": game_player.id,
+                "id": game_player.id,
                 "user_name": game_player.user_name,
                 "role": game_player.role,
             }
@@ -139,7 +140,7 @@ class GameRoomService:
                 room_id=game_player.room_id,
                 event_type=RoomEvent.PLAYER_LEFT,
                 data={
-                    "user_id": user_id,
+                    "id": user_id,
                 }
             )
 

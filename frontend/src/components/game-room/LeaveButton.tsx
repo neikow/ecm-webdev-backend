@@ -1,9 +1,14 @@
+import type { NavigateFunction } from 'react-router'
 import { useState } from 'react'
-import { useNavigate } from 'react-router'
-import { cn } from '../../utils/cn.ts'
+import { cn } from '../../utils/classes.ts'
 
-export function LeaveButton() {
-  const navigate = useNavigate()
+interface LeaveButtonProps {
+  navigate: NavigateFunction
+}
+
+export function LeaveButton(
+  props: LeaveButtonProps,
+) {
   const [isError, setIsError] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -15,7 +20,7 @@ export function LeaveButton() {
     setIsError(false)
 
     if (response.ok) {
-      navigate('/')
+      props.navigate('/')
     }
     else {
       const errorData: {

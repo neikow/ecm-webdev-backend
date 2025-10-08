@@ -50,9 +50,14 @@ def test_get_game_room_with_valid_password(session, client):
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["id"] == game_room.id
-    assert data["game_type"] == game_room.game_type
-    assert data["password"] == game_room.password
+
+    current_player_data = data["current_player"]
+    assert current_player_data is None
+
+    game_room_data = data["game_room"]
+    assert game_room_data["id"] == game_room.id
+    assert game_room_data["game_type"] == game_room.game_type
+    assert game_room_data["password"] == game_room.password
 
 
 def test_fail_to_get_game_room_with_invalid_password(session, client):
@@ -86,9 +91,42 @@ def test_get_game_room_data_with_authentication_but_no_password(session, client)
 
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
-    assert data["id"] == game_room.id
-    assert data["game_type"] == game_room.game_type
-    assert data["password"] == game_room.password
+    current_player_data = data["current_player"]
+    assert current_player_data is not None
+    assert current_player_data["role"] == UserRole.player
+    assert current_player_data["room_id"] == game_room.id
+    assert current_player_data["id"] is not None
+
+    game_room_data = data["game_room"]
+
+    assert game_room_data["id"] == game_room.id
+    assert game_room_data["game_type"] == game_room.game_type
+    assert game_room_data["password"] == game_room.password
+
+
+def test_get_game_room_returns_the_user_id_in_the_response(session, client):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="secret"
+    )
+
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        GamePlayerModel(
+            role=UserRole.player,
+            room_id=game_room.id,
+            id="42",
+        )
+    )
+
+    response = client.get(f"/game_rooms/data/{game_room.id}")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    game_room_data = data["game_room"]
+    current_player_data = data["current_player"]
+    assert game_room_data["id"] == game_room.id
+    assert game_room_data["game_type"] == game_room.game_type
+    assert game_room_data["password"] == game_room.password
+    assert current_player_data["id"] == "42"
 
 
 def test_fail_to_get_unknown_game_room(session, client):

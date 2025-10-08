@@ -118,9 +118,14 @@ async def get_game_rooms(session: Session = Depends(get_session)):
     )
 
 
+class GetGameRoomResponse(BaseModel):
+    game_room: GameRoomModel
+    current_player: GamePlayerModel | None = None
+
+
 @router.get(
     "/data/{game_room_id}",
-    response_model=GameRoomModel,
+    response_model=GetGameRoomResponse,
 )
 async def get_game_room(
         game_room_id: int,
@@ -129,12 +134,15 @@ async def get_game_room(
         current_player: GamePlayerModel | None = Depends(current_player_data)
 ):
     try:
-        game_service = GameRoomService.get_or_error(session, game_room_id)
+        game_room = GameRoomService.get_or_error(session, game_room_id)
 
         if current_player is not None and current_player.room_id == game_room_id:
-            return game_service
+            return GetGameRoomResponse(
+                game_room=game_room,
+                current_player=current_player
+            )
 
-        if game_service.password != password:
+        if game_room.password != password:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail={
@@ -142,7 +150,10 @@ async def get_game_room(
                     "message": "Invalid or missing password",
                 }
             )
-        return game_service
+        return GetGameRoomResponse(
+            game_room=game_room,
+            current_player=None
+        )
     except GameRoomService.GameRoomDoesNotExist:
         raise HTTPException(
             status_code=404,

@@ -3,7 +3,7 @@ import { useCallback, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { NavLink, useNavigate } from 'react-router'
 import { z } from 'zod'
-import { cn } from '../utils/cn.ts'
+import { cn } from '../utils/classes.ts'
 import { GameRoomPasswordSchema } from './HomePage.tsx'
 
 const AvailableGameTypes = ['connect_four'] as const

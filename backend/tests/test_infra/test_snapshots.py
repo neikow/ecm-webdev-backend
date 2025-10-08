@@ -2,7 +2,8 @@ import pytest
 from flexmock import flexmock
 
 from backend.domain.events import BaseEvent, RoomEvent
-from backend.infra.snapshots import SnapshotBuilderBase, SnapshotBase, SnapshotPlayer, RoomStatus, SnapshotChatMessage
+from backend.infra.snapshots import SnapshotBuilderBase, SnapshotBase, SnapshotPlayer, RoomStatus, SnapshotChatMessage, \
+    PlayerStatus
 from backend.models.game_player_model import UserRole
 
 
@@ -15,9 +16,9 @@ def snapshot_builder() -> SnapshotBuilderBase:
 @pytest.mark.asyncio
 async def test_build_player_list_snapshot(snapshot_builder) -> None:
     room_id = 0
-    admin_data = {'user_id': "0", "user_name": "admin", "role": UserRole.admin.value}
+    admin_data = {'id': "0", "user_name": "admin", "role": UserRole.admin.value}
     snapshot_admin = SnapshotPlayer(user_name="admin", id="0", role=UserRole.admin)
-    player_data = {'user_id': "1", "user_name": "player", "role": UserRole.player.value}
+    player_data = {'id': "1", "user_name": "player", "role": UserRole.player.value}
     snapshot_player = SnapshotPlayer(user_name="player", id="1", role=UserRole.player)
 
     events: list[BaseEvent] = []
@@ -69,6 +70,9 @@ async def test_build_player_list_snapshot(snapshot_builder) -> None:
     assert await snapshot_builder.build(room_id, events) == SnapshotBase(
         room_id=room_id,
         players=[
+            snapshot_admin.model_copy(
+                update={"status": PlayerStatus.DISCONNECTED}
+            ),
             snapshot_player
         ]
     )

@@ -8,10 +8,16 @@ from backend.domain.events import BaseEvent, RoomEvent
 from backend.models.game_player_model import UserRole
 
 
+class PlayerStatus(str, enum.Enum):
+    CONNECTED = "connected"
+    DISCONNECTED = "disconnected"
+
+
 class SnapshotPlayer(BaseModel):
     user_name: str
     role: UserRole
     id: str
+    status: PlayerStatus = Field(default=PlayerStatus.CONNECTED)
 
 
 class SnapshotChatMessage(BaseModel):
@@ -48,16 +54,21 @@ class SnapshotBuilderBase:
         state = SnapshotBase(
             room_id=room_id,
         )
-        player_names: dict[str, str] = {}
-        player_roles: dict[str, UserRole] = {}
-        players: list[str] = list()
+        players: list[SnapshotPlayer] = []
         for e in events:
             if e.type == RoomEvent.PLAYER_JOINED:
-                players.append(e.data["user_id"])
-                player_names[e.data["user_id"]] = e.data["user_name"]
-                player_roles[e.data["user_id"]] = UserRole(e.data['role'])
+                players.append(
+                    SnapshotPlayer(
+                        id=e.data['id'],
+                        role=e.data['role'],
+                        user_name=e.data['user_name'],
+                        status=PlayerStatus.CONNECTED
+                    )
+                )
             elif e.type == RoomEvent.PLAYER_LEFT:
-                players.remove(e.data["user_id"])
+                player = next((_p for _p in players if _p.id == e.data['id']), None)
+                if player:
+                    player.status = PlayerStatus.DISCONNECTED
             elif e.type == RoomEvent.ROOM_CLOSED:
                 state.status = RoomStatus.CLOSED
             elif e.type == RoomEvent.MESSAGE_SENT:
@@ -73,11 +84,6 @@ class SnapshotBuilderBase:
                     state,
                 )
 
-        state.players = [
-            SnapshotPlayer(
-                id=_id,
-                user_name=player_names[_id],
-                role=player_roles[_id]
-            ) for _id in players
-        ]
+        state.players = players
+
         return state
