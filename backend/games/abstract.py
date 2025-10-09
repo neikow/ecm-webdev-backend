@@ -1,4 +1,5 @@
 import abc
+import enum
 from dataclasses import dataclass
 
 from backend.domain.events import BaseEvent
@@ -6,12 +7,18 @@ from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
 
 
-class StateIncompatibilityError(Exception):
-    pass
+class GameExceptionType(str, enum.Enum):
+    state_incompatibility = "state_incompatibility"
+    wrong_player = "wrong_player"
+    forbidden_action = "forbidden_action"
+    invalid_action_data = "invalid_action_data"
 
 
-class WrongPlayerMoveError(Exception):
-    pass
+class GameException(Exception):
+    def __init__(self, *, exception_type: GameExceptionType, message: str) -> None:
+        self.exception_type = exception_type
+        self.message = message
+        super().__init__(message)
 
 
 @dataclass(frozen=True)

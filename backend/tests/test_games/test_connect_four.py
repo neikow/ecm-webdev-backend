@@ -4,6 +4,7 @@ from flexmock import flexmock
 
 from backend.domain.events import BaseEvent, GameEvent
 from backend.games import connect_four
+from backend.games.abstract import GameException, GameExceptionType
 from backend.games.connect_four import ConnectFour, ConnectFourState, PlayerActionData
 from backend.models.game_room_model import GameRoomModel
 from backend.utils.future import build_future
@@ -110,7 +111,7 @@ async def test_connect_four_handle_game_start_event_twice_raises(
     )
     assert game._global_state.state == ConnectFourState.ongoing
 
-    with pytest.raises(connect_four.StateIncompatibilityError):
+    with pytest.raises(GameException) as exc_info:
         await game.handle_event(
             BaseEvent(
                 type=GameEvent.GAME_START,
@@ -119,6 +120,8 @@ async def test_connect_four_handle_game_start_event_twice_raises(
                 room_id=game_room.id,
             ),
         )
+
+    assert exc_info.value.exception_type == GameExceptionType.state_incompatibility
 
 
 @pytest.mark.asyncio
@@ -220,7 +223,7 @@ async def test_connect_four_handle_player_action_out_of_turn(
     assert game._global_state.state == ConnectFourState.ongoing
     assert game._global_state.current_player == 1
 
-    with pytest.raises(connect_four.WrongPlayerMoveError):
+    with pytest.raises(GameException) as exc_info:
         await game.handle_event(
             BaseEvent(
                 type=GameEvent.PLAYER_ACTION,
@@ -233,6 +236,8 @@ async def test_connect_four_handle_player_action_out_of_turn(
                 ).model_dump(),
             )
         )
+
+    assert exc_info.value.exception_type == GameExceptionType.wrong_player
 
 
 @pytest.mark.asyncio
@@ -263,7 +268,7 @@ async def test_connect_four_handle_player_action_column_full(
         [0, 0, 0, 2, 0, 0, 0],
     ]
 
-    with pytest.raises(connect_four.WrongPlayerMoveError):
+    with pytest.raises(GameException) as exc_info:
         await game.handle_event(
             BaseEvent(
                 type=GameEvent.PLAYER_ACTION,
@@ -277,6 +282,8 @@ async def test_connect_four_handle_player_action_column_full(
             )
         )
 
+    assert exc_info.value.exception_type == GameExceptionType.forbidden_action
+
 
 @pytest.mark.asyncio
 async def test_connect_four_handle_player_action_wrong_state(
@@ -287,7 +294,7 @@ async def test_connect_four_handle_player_action_wrong_state(
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     assert game._global_state.state == ConnectFourState.not_started
 
-    with pytest.raises(connect_four.StateIncompatibilityError):
+    with pytest.raises(GameException) as exc_info:
         await game.handle_event(
             BaseEvent(
                 type=GameEvent.PLAYER_ACTION,
@@ -300,6 +307,8 @@ async def test_connect_four_handle_player_action_wrong_state(
                 ).model_dump(),
             )
         )
+
+    assert exc_info.value.exception_type == GameExceptionType.state_incompatibility
 
 
 @pytest.mark.asyncio

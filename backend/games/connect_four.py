@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from backend.domain.events import BaseEvent, GameEvent
 from backend.events.bus import EventBus
-from backend.games.abstract import Game, PlayerSpec, Metadata, StateIncompatibilityError, WrongPlayerMoveError
+from backend.games.abstract import Game, PlayerSpec, Metadata, GameException, GameExceptionType
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
 
@@ -80,7 +80,10 @@ class ConnectFour(Game):
 
     async def _handle_game_start(self, event: BaseEvent) -> None:
         if self._global_state.state != ConnectFourState.not_started:
-            raise StateIncompatibilityError
+            raise GameException(
+                exception_type=GameExceptionType.state_incompatibility,
+                message=f"Game has already started."
+            )
         self._global_state.state = ConnectFourState.ongoing
         self._global_state.current_player = randint(1, 2)
         event = await self.event_store.append(
@@ -127,18 +130,23 @@ class ConnectFour(Game):
 
     async def _handle_player_action(self, event: BaseEvent) -> None:
         if self._global_state.state != ConnectFourState.ongoing:
-            raise StateIncompatibilityError
+            raise GameException(
+                exception_type=GameExceptionType.state_incompatibility,
+                message=f"Game is not ongoing, cannot perform actions."
+            )
         action_data = PlayerActionData(**event.data)
         if action_data.player != self._global_state.current_player:
-            raise WrongPlayerMoveError(
-                f"It is player {self._global_state.current_player}'s turn, not player {action_data.player}'s turn."
+            raise GameException(
+                exception_type=GameExceptionType.wrong_player,
+                message=f"Please wait for your turn."
             )
 
         column = action_data.column
         column_height = self._get_column_height(self._global_state.grid, column)
         if column_height >= ROWS:
-            raise WrongPlayerMoveError(
-                f"Column {column} is full, cannot drop disc there."
+            raise GameException(
+                exception_type=GameExceptionType.forbidden_action,
+                message=f"Column {column} is full, cannot drop disc there."
             )
         self._global_state.grid[ROWS - 1 - column_height][column] = action_data.player
 
