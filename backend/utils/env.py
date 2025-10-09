@@ -4,7 +4,7 @@ from typing import Literal
 from dotenv import load_dotenv
 
 
-def get_env(key: Literal["CORS_ORIGINS", "JWT_SECRET_KEY"]) -> str:
+def get_env(key: Literal["CORS_ORIGINS", "JWT_SECRET_KEY", "BACKEND_COOKIE_DOMAIN", "DEV"]) -> str:
     load_dotenv()
     value = os.getenv(key)
     if value is None:

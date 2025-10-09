@@ -22,6 +22,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.10.7",
+    "cryptography>=46.0.2",
     "flexmock>=0.12.2",
     "mypy>=1.18.2",
     "pytest-asyncio>=1.2.0",

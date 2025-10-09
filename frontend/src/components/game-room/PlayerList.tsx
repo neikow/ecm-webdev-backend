@@ -5,24 +5,29 @@ import { cn } from '../../utils/classes.ts'
 
 interface PlayerListProps {
   className?: ClassValue
+  currentPlayerId: string | undefined
 }
 
-function PlayerListItem(props: { player: Player }) {
+function PlayerListItem(props: { player: Player, isCurrent: boolean }) {
   return (
     <li className="px-3 py-2 bg-base-100 rounded flex flex-row items-center gap-2">
-      <span className="font-black">
+      <span
+        className={cn('font-black', {
+          'text-primary': props.isCurrent,
+        })}
+      >
         {props.player.user_name}
       </span>
       {
         props.player.role === 'admin'
-        && <div className="badge badge-soft badge-primary badge-sm select-none">Host</div>
+        && <span role="note" className="badge badge-soft badge-primary badge-sm select-none">Host</span>
       }
     </li>
   )
 }
 
 export function PlayerList(props: PlayerListProps) {
-  const players = useRoomPlayers()
+  const { activePlayers } = useRoomPlayers()
 
   return (
     <div
@@ -35,13 +40,13 @@ export function PlayerList(props: PlayerListProps) {
         <span>Players</span>
         <div className="badge badge-soft badge-primary select-none">
           {
-            players.length ?? 0
+            activePlayers.length ?? 0
           }
         </div>
       </div>
       <ul className="flex flex-col gap-1 overflow-y-auto">
-        {players.map((player, index) => (
-          <PlayerListItem key={`player-${index}`} player={player} />
+        {activePlayers.map((player, index) => (
+          <PlayerListItem key={`player-${index}`} player={player} isCurrent={props.currentPlayerId === player.id} />
         ))}
       </ul>
     </div>

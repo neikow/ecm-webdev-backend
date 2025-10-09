@@ -13,7 +13,7 @@ from backend.services.game_room_service import (
     GameRoomService,
 )
 from backend.utils.db import get_session
-from backend.utils.errors import ErrorCode
+from backend.utils.errors import ErrorCode, APIException, ApiErrorDetail
 from backend.utils.security import current_player_data, add_authorization_cookie, create_access_token, \
     remove_authorization_cookie
 
@@ -33,6 +33,12 @@ class CreateGameRoomResponse(BaseModel):
 
 @router.post(
     "/",
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            "model": ApiErrorDetail,
+            "description": "User is already in a game room",
+        }
+    }
 )
 async def create_game_room(
         response: Response,
@@ -43,14 +49,14 @@ async def create_game_room(
         event_bus: EventBus = Depends(get_event_bus)
 ) -> CreateGameRoomResponse:
     if player_data is not None:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": ErrorCode.ALREADY_IN_GAME_ROOM,
-                "message": "You are already in a game room, cannot create a new one",
-                "room_id": player_data.room_id,
-                "role": player_data.role,
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.ALREADY_IN_GAME_ROOM,
+                message="You are already in a game room, cannot create a new one",
+                room_id=player_data.room_id,
+                role=player_data.role,
+            ),
         )
     try:
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
@@ -58,12 +64,12 @@ async def create_game_room(
         game_room_copy = game_room.model_copy()
 
         if not game_room.id:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail={
-                    "code": ErrorCode.INTERNAL_ERROR,
-                    "message": "Failed to create game room",
-                },
+                detail=ApiErrorDetail(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message="Failed to create game room",
+                ),
             )
 
         player = await GameRoomService.add_user(
@@ -124,7 +130,7 @@ class GetGameRoomResponse(BaseModel):
 
 
 @router.get(
-    "/data/{game_room_id}",
+    "/data/{game_room_id}/",
     response_model=GetGameRoomResponse,
 )
 async def get_game_room(
@@ -172,23 +178,23 @@ async def find_game_room_by_password(
         password: str, session: Session = Depends(get_session)
 ):
     if not password:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": ErrorCode.MISSING_QUERY_PARAMS,
-                "message": "Missing required query parameter: password",
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.MISSING_QUERY_PARAMS,
+                message="Missing required query parameter: password",
+            )
         )
 
     game_room = GameRoomService.find_by_password(session, password)
 
     if not game_room:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
-                "message": "Game room with the given password not found",
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                message="Game room with the given password not found",
+            ),
         )
     return game_room
 
@@ -207,12 +213,12 @@ async def join_game_room(
 ) -> GamePlayerModel:
     game_room = GameRoomService.find_by_password(session, password)
     if not game_room:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail={
-                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
-                "message": "Game room with the given password not found",
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                message="Game room with the given password not found"
+            )
         )
 
     try:
@@ -251,30 +257,79 @@ async def leave_game_room(
         event_bus: EventBus = Depends(get_event_bus)
 ) -> LeaveGameRoomResponse:
     if player_data is None:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": ErrorCode.NOT_IN_GAME_ROOM,
-                "message": "You are not in a game room",
-            },
-        )
-    try:
-        await GameRoomService.remove_user(
-            session=session,
-            player_id=player_data.id,
-            event_store=event_store,
-            event_bus=event_bus,
+            detail=ApiErrorDetail(
+                code=ErrorCode.NOT_IN_GAME_ROOM,
+                message="You are not in a game room",
+            ),
         )
 
-        remove_authorization_cookie(response)
-        return LeaveGameRoomResponse(
-            message="You have successfully left the game room",
+    await GameRoomService.remove_user(
+        session=session,
+        player_id=player_data.id,
+        event_store=event_store,
+        event_bus=event_bus,
+    )
+    remove_authorization_cookie(response)
+
+    return LeaveGameRoomResponse(
+        message="You have successfully left the game room",
+    )
+
+
+class EndGameRoomResponse(BaseModel):
+    success: bool
+    message: str
+
+
+@router.post(
+    '/{game_room_id}/end/',
+    responses={
+        status.HTTP_403_FORBIDDEN: {
+            "model": ApiErrorDetail,
+            "description": "User is not admin or not in the game room",
+        },
+        status.HTTP_404_NOT_FOUND: {
+            "model": ApiErrorDetail,
+            "description": "Game room does not exist",
+        },
+    }
+)
+async def end_game_room(
+        game_room_id: int,
+        session: Session = Depends(get_session),
+        player_data: GamePlayerModel | None = Depends(current_player_data),
+        event_store: MemoryEventStore = Depends(get_event_store),
+        event_bus: EventBus = Depends(get_event_bus)
+) -> EndGameRoomResponse:
+    if player_data is None or player_data.role != UserRole.admin or player_data.room_id != game_room_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ApiErrorDetail(
+                code=ErrorCode.FORBIDDEN,
+                message="You do not have permission to end this game room",
+                role=player_data.role if player_data else None,
+                room_id=player_data.room_id if player_data else None,
+                id=player_data.id if player_data else None,
+            )
+        )
+    try:
+        success = await GameRoomService.end_game_room(
+            session=session,
+            game_room_id=game_room_id,
+            event_store=event_store,
+            event_bus=event_bus
+        )
+        return EndGameRoomResponse(
+            success=success,
+            message="Game room ended successfully" if success else "Failed to end the game room",
         )
     except GameRoomService.GameRoomDoesNotExist:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail={
-                "code": ErrorCode.NOT_IN_GAME_ROOM,
-                "message": "You are not in a game room",
-            },
+        raise APIException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ApiErrorDetail(
+                code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                message="The requested game room does not exist",
+            )
         )

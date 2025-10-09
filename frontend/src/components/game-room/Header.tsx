@@ -1,9 +1,9 @@
 import type { NavigateFunction } from 'react-router'
-import type { StaticGameRoomData } from '../../pages/GameRoomPage.tsx'
+import type { API } from '../../types'
 import { LeaveButton } from './LeaveButton.tsx'
 
 export interface HeaderProps {
-  data?: StaticGameRoomData
+  data?: API['GetGameRoomResponse']
   navigate: NavigateFunction
 }
 

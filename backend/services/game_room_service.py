@@ -61,8 +61,6 @@ class GameRoomService:
     @staticmethod
     def check_password(session: Session, game_room_id: int, password: str) -> bool:
         game_room = GameRoomService.get_or_error(session, game_room_id)
-        if not game_room:
-            raise GameRoomService.GameRoomDoesNotExist(f"Game room with id {game_room_id} not found")
         return game_room.password == password
 
     @staticmethod
@@ -148,3 +146,22 @@ class GameRoomService:
             return True
 
         return False
+
+    @staticmethod
+    async def end_game_room(
+            session: Session,
+            game_room_id: int,
+            event_store: MemoryEventStore,
+            event_bus: EventBus,
+    ) -> bool:
+        game_room = GameRoomService.get_or_error(session, game_room_id)
+        if not game_room.is_active:
+            return False
+
+        game_room.is_active = False
+        session.add(game_room)
+        session.commit()
+
+        event = await event_store.append(game_room_id, RoomEvent.ROOM_CLOSED)
+        await event_bus.publish(event)
+        return True

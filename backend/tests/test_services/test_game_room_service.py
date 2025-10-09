@@ -1,6 +1,7 @@
 import pytest
 from sqlmodel import select
 
+from backend.domain.events import RoomEvent
 from backend.models.game_player_model import UserRole, GamePlayerModel
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import (
@@ -242,3 +243,67 @@ async def test_fail_to_remove_non_existing_player(
     )
 
     assert result is False
+
+
+@pytest.mark.asyncio
+async def test_ending_a_game_room_should_set_the_room_as_inactive_and_send_an_event_to_connected_players(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
+    game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+
+    mock_event_store.should_call('append').with_args(game_room.id, RoomEvent.ROOM_CLOSED).once()
+    mock_event_bus.should_call('publish').once()
+
+    result = await GameRoomService.end_game_room(
+        session=session,
+        game_room_id=game_room.id,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
+    )
+
+    assert result is True
+    updated_game_room = GameRoomService.get_or_error(session, game_room.id)
+    assert updated_game_room.is_active is False
+
+
+@pytest.mark.asyncio
+async def test_failing_to_end_a_non_existing_game_room(session, mock_event_bus, mock_event_store):
+    with pytest.raises(GameRoomService.GameRoomDoesNotExist):
+        await GameRoomService.end_game_room(
+            session=session,
+            game_room_id=-1,
+            event_bus=mock_event_bus,
+            event_store=mock_event_store,
+        )
+
+
+@pytest.mark.asyncio
+async def test_failing_to_end_an_already_inactive_game_room(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
+    game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+    game_room.is_active = False
+    session.add(game_room)
+    session.commit()
+
+    result = await GameRoomService.end_game_room(
+        session=session,
+        game_room_id=game_room.id,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
+    )
+
+    assert result is False
+
+
+def test_check_password_for_non_existing_room_should_raise_error(session):
+    with pytest.raises(GameRoomService.GameRoomDoesNotExist):
+        GameRoomService.check_password(
+            session,
+            game_room_id=-1,
+            password="any"
+        )

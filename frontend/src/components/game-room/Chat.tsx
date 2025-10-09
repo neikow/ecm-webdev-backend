@@ -59,8 +59,6 @@ export function Chat(props: ChatProps) {
     return <div className="skeleton w-full h-full"></div>
   }
 
-  console.log(messages, props.currentPlayerId)
-
   return (
     <div
       className={cn(

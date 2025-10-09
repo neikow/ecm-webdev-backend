@@ -1,9 +1,11 @@
+import type { API } from '../types'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useCallback, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { NavLink, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { cn } from '../utils/classes.ts'
+import { apiClient } from '../utils/fetch.ts'
 import { GameRoomPasswordSchema } from './HomePage.tsx'
 
 const AvailableGameTypes = ['connect_four'] as const
@@ -22,60 +24,61 @@ const AvailableGameTypeDefinitions: {
 
 const CreateGameRoomSchema = z.object({
   game_type: z.enum(AvailableGameTypes),
-  user_name: z.string().min(1, 'Name is required').max(32, 'Name is too long').optional(),
+  user_name: z.string().min(1, 'Name is required').max(32, 'Name is too long'),
   password: GameRoomPasswordSchema,
 })
 
 export function CreateGameRoomPage() {
   const navigate = useNavigate()
   const alreadyInAGameModalRef = useRef<HTMLDialogElement | null>(null)
-  const [isLoading, setIsLoading] = useState(false)
   const [canEndGame, setCanEndGame] = useState(false)
   const [activeGameRoomId, setActiveGameRoomId] = useState<number | null>(null)
   const { register, handleSubmit, formState: { errors }, setError } = useForm({
     resolver: zodResolver(CreateGameRoomSchema),
   })
 
-  async function onSubmit(data: z.infer<typeof CreateGameRoomSchema>) {
-    setIsLoading(true)
-    const response = await fetch('/api/game_rooms/', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(data),
-    })
-    setIsLoading(false)
-
-    if (response.ok) {
-      const successData: {
-        game_room: {
-          id: string
-        }
-      } = await response.json()
-
-      navigate(`/game-rooms/${successData.game_room.id}`)
-    }
-    else {
-      const errorData: {
-        detail: {
-          code: string
-          message: string
-          room_id: string
-          role: 'admin' | 'player'
-        }
-      } = await response.json()
-
-      if (errorData.detail.code === 'already_in_game_room') {
-        alreadyInAGameModalRef.current?.showModal()
-        setActiveGameRoomId(Number(errorData.detail.room_id))
-        if (errorData.detail.role === 'admin') {
+  const { mutate: createGameRoom, isPending: isGameRoomCreationLoading } = apiClient.useMutation('post', '/game_rooms/', {
+    onSuccess: (data) => {
+      navigate(`/game-rooms/${data.game_room.id}`)
+    },
+    onError: (error) => {
+      const errorData = error as API['ApiErrorDetail']
+      if (errorData.code === 'already_in_game_room') {
+        if (errorData.role === 'admin') {
           setCanEndGame(true)
         }
+
+        setActiveGameRoomId(Number(errorData.room_id))
+        alreadyInAGameModalRef.current?.showModal()
       }
 
-      setError('root', { message: errorData.detail.message })
-    }
+      setError('root', { message: errorData.message })
+    },
+  })
+
+  const {
+    mutate: endGameRoom,
+    isPending: isEndGameRoomLoading,
+  } = apiClient.useMutation('post', '/game_rooms/{game_room_id}/end/', {
+    onSuccess: (data) => {
+      if (!data.success) {
+        setError('root', { message: 'Failed to end the previous game room' })
+      }
+      else {
+        alreadyInAGameModalRef.current?.close()
+        setCanEndGame(false)
+      }
+    },
+    onError: (error) => {
+      const errorData = error as API['ApiErrorDetail']
+      setError('root', { message: errorData.message })
+    },
+  })
+
+  async function onSubmit(data: z.infer<typeof CreateGameRoomSchema>) {
+    createGameRoom({
+      body: data,
+    })
   }
 
   const returnToActiveGameRoom = useCallback(() => {
@@ -89,25 +92,13 @@ export function CreateGameRoomPage() {
       return
     }
 
-    setIsLoading(true)
-    const response = await fetch(`/api/game_rooms/${activeGameRoomId}/end`, {
-      method: 'POST',
+    endGameRoom({
+      params: {
+        path: {
+          game_room_id: activeGameRoomId,
+        },
+      },
     })
-    setIsLoading(false)
-
-    if (response.ok) {
-      alreadyInAGameModalRef.current?.close()
-      setCanEndGame(false)
-    }
-    else {
-      const errorData: {
-        detail: {
-          code: string
-          message: string
-        }
-      } = await response.json()
-      setError('root', { message: errorData.detail.message })
-    }
   }, [activeGameRoomId, setError])
 
   const hasErrors = errors.root || errors.game_type || errors.user_name || errors.password
@@ -118,7 +109,7 @@ export function CreateGameRoomPage() {
         <div className="hero-content text-center">
           <div className="max-w-md">
             <h1 className="text-5xl font-bold">Create a Game Room</h1>
-            <p className="py-6">
+            <p className="py-6 text-balance">
               Create a game room and invite your friends to play together!
             </p>
             <form className="flex flex-col gap-4" onSubmit={handleSubmit(onSubmit)}>
@@ -174,12 +165,12 @@ export function CreateGameRoomPage() {
                 )}
               </div>
               <button
-                disabled={isLoading}
+                disabled={isGameRoomCreationLoading}
                 className={cn({
                   'btn mx-auto': true,
-                  'btn-disabled': isLoading,
-                  'btn-primary': !isLoading && !hasErrors,
-                  'btn-error': !isLoading && hasErrors,
+                  'btn-disabled': isGameRoomCreationLoading,
+                  'btn-primary': !isGameRoomCreationLoading && !hasErrors,
+                  'btn-error': !isGameRoomCreationLoading && hasErrors,
                 })}
                 type="submit"
               >
@@ -207,7 +198,13 @@ export function CreateGameRoomPage() {
           <div className="modal-action">
             {canEndGame && (
               <button
-                className="btn"
+                disabled={isEndGameRoomLoading}
+                className={cn({
+                  'btn mx-auto': true,
+                  'btn-disabled': isEndGameRoomLoading,
+                  'btn-secondary': !isEndGameRoomLoading && !hasErrors,
+                  'btn-error': !isEndGameRoomLoading && hasErrors,
+                })}
                 onClick={endPreviousGameRoom}
               >
                 End previous

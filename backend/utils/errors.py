@@ -1,10 +1,13 @@
 import enum
 
+from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
 
 
 class ErrorCode(str, enum.Enum):
     INTERNAL_ERROR = "internal_error"
+    FORBIDDEN = "forbidden"
+
     ALREADY_IN_GAME_ROOM = "already_in_game_room"
     NOT_IN_GAME_ROOM = "not_in_game_room"
     PASSWORD_USED = "password_used"
@@ -17,10 +20,21 @@ class ErrorCode(str, enum.Enum):
     WS_CHAT_MESSAGE_MISSING_TEXT = "ws_chat_message_missing_text"
 
 
-class ExceptionDetail(BaseModel):
+class ApiErrorDetail(BaseModel):
     model_config = ConfigDict(
-        extra="allow",
+        extra="allow"
     )
 
     code: ErrorCode
     message: str
+
+
+class APIException(HTTPException):
+    def __init__(self, *,
+                 status_code: int,
+                 detail: ApiErrorDetail
+                 ) -> None:
+        super().__init__(
+            status_code=status_code,
+            detail=detail.model_dump()
+        )

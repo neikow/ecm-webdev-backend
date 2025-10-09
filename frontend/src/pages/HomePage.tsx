@@ -1,10 +1,12 @@
 import type { RefObject } from 'react'
+import type { API } from '../types'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRef, useState } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { NavLink, useNavigate } from 'react-router'
 import { z } from 'zod'
 import { cn } from '../utils/classes.ts'
+import { apiClient } from '../utils/fetch.ts'
 
 export const GameRoomPasswordSchema = z.string().min(5, 'Room password muse be at least 5 characters long').max(32, 'Room password is too long')
 
@@ -17,57 +19,82 @@ function JoinGameModal(props: {
   modalRef: RefObject<HTMLDialogElement | null>
 }) {
   const navigate = useNavigate()
-  const [selectedGameRoom, setSelectedGameRoom] = useState<{
-    id: number
-    password: string
-    game_type: string
-  }>()
-  const [isLoading, setIsLoading] = useState(false)
   const {
     register,
     handleSubmit,
     setError,
     formState: { errors },
+    watch,
   } = useForm({
     resolver: zodResolver(JoinGameFormSchema),
   })
 
-  async function onSubmit(data: z.infer<typeof JoinGameFormSchema>) {
-    if (selectedGameRoom?.password === data.password) {
-      const response = await fetch(`/api/game_rooms/join/${selectedGameRoom.id}?password=${selectedGameRoom.password}&user_name=${data.user_name}`, {
-        method: 'POST',
-      })
-      if (response.ok) {
-        navigate(`/game-rooms/${selectedGameRoom.id}`)
+  const { isPending, mutate: joinGameRoom } = apiClient.useMutation('post', '/game_rooms/join/{game_room_id}', {
+    onSuccess: (data) => {
+      navigate(`/game-rooms/${data.room_id}`)
+    },
+    onError: (error) => {
+      const errorData = error as API['ApiErrorDetail']
+      if (errorData.code === 'game_room_full') {
+        setError('root', { message: 'This game room is full' })
       }
       else {
-        const {
-          detail: { code },
-        } = await response.json()
-
-        if (code === 'game_room_full') {
-          setError('root', { message: 'This game room is full' })
-        }
-        else {
-          setError('root', { message: 'An error occured when trying to join the game' })
-        }
+        setError('root', { message: 'An error occured when trying to join the game' })
       }
-    }
+    },
+  })
 
-    setSelectedGameRoom(undefined)
+  const {
+    data: selectedGameRoom,
+    mutate: findGameRoom,
+    reset: resetSelectedGameRoom,
+  } = apiClient.useMutation('get', '/game_rooms/find', {
+    onError: (error) => {
+      const errorData = error as API['ApiErrorDetail']
+      if (errorData.code === 'game_room_does_not_exist') {
+        setError('password', { message: 'Room not found' })
+      }
+      else {
+        setError('root', { message: 'An error occured when trying to find the game room' })
+      }
+    },
+  })
 
-    setIsLoading(true)
-    const response = await fetch(`/api/game_rooms/find?password=${data.password}`)
-    setIsLoading(false)
-    if (response.ok) {
-      const room = await response.json()
-      setSelectedGameRoom(room)
-    }
-    else if (response.status === 404) {
-      setError('password', { message: 'Room not found' })
+  useEffect(() => {
+    const { unsubscribe } = watch(() => {
+      resetSelectedGameRoom()
+    })
+    return () => unsubscribe()
+  }, [watch])
+
+  const onSubmit = (data: z.infer<typeof JoinGameFormSchema>) => {
+    if (selectedGameRoom) { // If we already have a selected game room, try to join it
+      const roomId = selectedGameRoom.id
+      if (!roomId) {
+        setError('root', { message: 'Invalid room ID' })
+        return
+      }
+
+      joinGameRoom({
+        params: {
+          path: {
+            game_room_id: roomId,
+          },
+          query: {
+            password: data.password,
+            user_name: data.user_name,
+          },
+        },
+      })
     }
     else {
-      setError('password', { message: 'Something went wrong' })
+      findGameRoom({
+        params: {
+          query: {
+            password: data.password,
+          },
+        },
+      })
     }
   }
 
@@ -81,7 +108,7 @@ function JoinGameModal(props: {
           <p className="text-center text-balance">
             Enter the room password, your friend should have given it to you.
           </p>
-          <form onSubmit={handleSubmit(onSubmit)} className="w-xs">
+          <form onSubmit={handleSubmit((onSubmit))} className="w-xs">
             <div className="mb-2">
               <input
                 {...register('user_name')}
@@ -122,13 +149,13 @@ function JoinGameModal(props: {
               </p>
             )}
             <button
-              disabled={isLoading}
+              disabled={isPending}
               type="submit"
               className={
                 cn({
                   'btn mt-4 w-full': true,
                   'btn-primary': !selectedGameRoom && !hasError,
-                  'btn-disabled loading': isLoading,
+                  'btn-disabled loading': isPending,
                   'btn-success': !!selectedGameRoom && !hasError,
                   'btn-error': hasError,
                 })
@@ -167,9 +194,9 @@ export function HomePage() {
             </svg>
           </div>
 
-          <h1 className="text-5xl font-bold">Open Game Engine</h1>
+          <h1 className="text-5xl font-bold">Play.ly</h1>
           <p className="py-6 text-balance">
-            A collection of games using my Open Game Engine for the web.
+            A collection of games to play with friends.
           </p>
           <div className="flex flex-row gap-4 justify-center items-center">
             <NavLink to="/game-rooms/new" className="btn btn-primary">Create a room</NavLink>

@@ -1,6 +1,6 @@
 import type { NavigateFunction } from 'react-router'
-import { useState } from 'react'
 import { cn } from '../../utils/classes.ts'
+import { apiClient } from '../../utils/fetch.ts'
 
 interface LeaveButtonProps {
   navigate: NavigateFunction
@@ -9,40 +9,24 @@ interface LeaveButtonProps {
 export function LeaveButton(
   props: LeaveButtonProps,
 ) {
-  const [isError, setIsError] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-
-  async function handleLeave() {
-    setIsLoading(true)
-    const response = await fetch(`/api/game_rooms/leave`, {
-      method: 'POST',
-    })
-    setIsError(false)
-
-    if (response.ok) {
+  const { isError, isPending, mutate: leaveGame } = apiClient.useMutation('post', '/game_rooms/leave', {
+    onSuccess: () => {
       props.navigate('/')
-    }
-    else {
-      const errorData: {
-        detail: {
-          code: string
-          message: string
-        }
-      } = await response.json()
-      console.error('Failed to leave the game room:', errorData.detail.message)
-      setIsError(true)
-    }
-  }
+    },
+    onError: (error) => {
+      console.error(error)
+    },
+  })
 
   return (
     <button
       className={cn(
         ['btn btn-primary', {
           'btn-error': isError,
-          'btn-disabled loading': isLoading,
+          'btn-disabled loading': isPending,
         }],
       )}
-      onClick={handleLeave}
+      onClick={() => leaveGame({})}
     >
       Leave
     </button>

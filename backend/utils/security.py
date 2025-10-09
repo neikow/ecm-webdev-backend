@@ -53,7 +53,14 @@ def verify_token(token: str) -> GamePlayerModel:
 
 
 def add_authorization_cookie(response: Response, token: str) -> None:
-    response.set_cookie(AUTHORIZATION_COOKIE, token, httponly=True)
+    response.set_cookie(
+        key=AUTHORIZATION_COOKIE,
+        value=token,
+        httponly=True,
+        secure=True,
+        path="/",
+        samesite="none",
+    )
 
 
 def remove_authorization_cookie(response: Response) -> None:

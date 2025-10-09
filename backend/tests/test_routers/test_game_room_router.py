@@ -1,10 +1,11 @@
 import pytest
+import time_machine
 from starlette import status
 
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import GameRoomService
-from backend.utils.errors import ErrorCode
+from backend.utils.errors import ErrorCode, ApiErrorDetail
 from backend.utils.game_utils import get_room_max_users
 from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE
 from backend.utils.security import verify_token
@@ -142,10 +143,10 @@ def test_fail_to_find_game_room_by_empty_password(session, client):
 
     assert response.status_code == status.HTTP_400_BAD_REQUEST
     data = response.json()
-    assert data["detail"] == {
-        "code": "missing_query_params",
-        "message": "Missing required query parameter: password"
-    }
+    assert data == ApiErrorDetail(
+        code=ErrorCode.MISSING_QUERY_PARAMS,
+        message="Missing required query parameter: password"
+    ).model_dump()
 
 
 def test_creating_game_room_sets_the_user_as_admin(session, client):
@@ -190,12 +191,13 @@ def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
 
     assert response.status_code == status.HTTP_403_FORBIDDEN
     data = response.json()
-    assert data["detail"] == {
-        "code": ErrorCode.ALREADY_IN_GAME_ROOM,
-        'message': 'You are already in a game room, cannot create a new one',
-        "role": 'player',
-        'room_id': 1,
-    }
+
+    assert data == ApiErrorDetail(
+        code=ErrorCode.ALREADY_IN_GAME_ROOM,
+        message='You are already in a game room, cannot create a new one',
+        role='player',
+        room_id=1,
+    ).model_dump()
 
 
 def test_join_game_room(session, client):
@@ -271,3 +273,163 @@ async def test_leave_game_room(
     assert response.cookies.get(AUTHORIZATION_COOKIE) is None
     data = response.json()
     assert data["message"] == "You have successfully left the game room"
+
+
+@pytest.mark.asyncio
+async def test_end_game_room_should_end_an_active_game_when_called_by_admin(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="<PASSWORD>"
+    )
+
+    admin = await GameRoomService.add_user(
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.admin,
+        user_name="admin",
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
+    )
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(admin)
+
+    response = client.post(f"/game_rooms/{game_room.id}/end")
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["message"] == "Game room ended successfully"
+
+
+@pytest.mark.asyncio
+async def test_fail_to_end_game_room_when_called_by_non_admin(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="<PASSWORD>"
+    )
+
+    player = await GameRoomService.add_user(
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name="player",
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
+    )
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(player)
+
+    response = client.post(f"/game_rooms/{game_room.id}/end")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.FORBIDDEN,
+        message="You do not have permission to end this game room",
+        role=UserRole.player,
+        room_id=game_room.id,
+        id=player.id,
+    ).model_dump()
+
+
+@pytest.mark.asyncio
+async def test_fail_to_leave_a_game_room_if_not_in_one(
+        session,
+        client,
+):
+    response = client.post("/game_rooms/leave")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.NOT_IN_GAME_ROOM,
+        message="You are not in a game room",
+    ).model_dump()
+
+
+@pytest.mark.asyncio
+async def test_fail_to_end_a_game_room_that_does_not_exist(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="<PASSWORD>"
+    )
+
+    admin = await GameRoomService.add_user(
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.admin,
+        user_name="admin",
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
+    )
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(admin)
+
+    session.delete(game_room)
+    session.commit()
+
+    response = client.post(f"/game_rooms/{game_room.id}/end")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+        message="The requested game room does not exist"
+    ).model_dump()
+
+
+@pytest.mark.asyncio
+async def test_fail_to_join_game_room_if_wrong_password(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="secret"
+    )
+
+    response = client.post(f"/game_rooms/join/{game_room.id}?password=wrongpassword&user_name=latecomer")
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+        message="Game room with the given password not found"
+    ).model_dump()
+
+
+@pytest.mark.asyncio
+@time_machine.travel("2025-01-01 12:00:00")
+def test_find_game_room_by_password_should_return_game_room_data(
+        session,
+        client
+):
+    password = "securepassword"
+    game_type = GameType.connect_four
+
+    create_game_room = GameRoomService.create(session, game_type, password)
+
+    response = client.get(f"/game_rooms/find?password={password}")
+
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data == create_game_room.model_dump(mode="json")
+
+
+@pytest.mark.asyncio
+async def test_fail_to_find_game_room_by_password_if_not_exists(
+        session,
+        client
+):
+    response = client.get(f"/game_rooms/find?password=unknownpassword")
+
+    assert response.status_code == status.HTTP_404_NOT_FOUND
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+        message="Game room with the given password not found"
+    ).model_dump()
