@@ -49,7 +49,8 @@ async def test_refresh_token_should_return_401_if_no_refresh_token(client):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {
         "code": "no_refresh",
-        "message": "No refresh token provided"
+        "message": "No refresh token provided",
+        "should_refresh_token": True
     }
 
 
@@ -60,7 +61,8 @@ async def test_refresh_token_should_return_401_if_invalid_refresh_token(client):
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {
         "code": "no_refresh",
-        "message": "Invalid or expired refresh token"
+        "message": "Invalid or expired refresh token",
+        "should_refresh_token": True
     }
 
 
@@ -79,5 +81,6 @@ async def test_refresh_token_should_return_401_if_the_user_is_not_in_a_game(clie
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     assert response.json() == {
         "code": "no_refresh",
-        "message": "Invalid or expired refresh token"
+        "message": "Invalid or expired refresh token",
+        "should_refresh_token": True
     }

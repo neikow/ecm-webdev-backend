@@ -12,6 +12,7 @@ dependencies = [
     "pyjwt>=2.10.1",
     "pytest>=8.4.2",
     "python-dotenv>=1.1.1",
+    "python-statemachine>=2.5.0",
     "sqlmodel>=0.0.25",
     "time-machine>=2.19.0",
     "uvicorn>=0.37.0",

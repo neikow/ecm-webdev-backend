@@ -13,4 +13,9 @@ def get_game_class(game_type: GameType) -> type[Game]:
 
 def get_room_max_users(game_type: GameType) -> int:
     game_class = get_game_class(game_type)
-    return game_class.max_players
+    return game_class.get_players_spec().max
+
+
+def get_room_min_users(game_type: GameType) -> int:
+    game_class = get_game_class(game_type)
+    return game_class.get_players_spec().min

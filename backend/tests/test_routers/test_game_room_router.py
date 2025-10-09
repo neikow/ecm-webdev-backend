@@ -70,9 +70,10 @@ def test_fail_to_get_game_room_with_invalid_password(session, client):
 
     assert response.status_code == status.HTTP_401_UNAUTHORIZED
     data = response.json()
-    assert data["detail"] == {
+    assert data == {
         "code": 'password_invalid',
         "message": "Invalid or missing password",
+        "should_refresh_token": True
     }
 
 
@@ -205,7 +206,8 @@ def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
         message='You are already in a game room, cannot create a new one',
         role='player',
         room_id=1,
-    ).model_dump()
+        should_refresh_token=True,
+    ).model_dump(mode="json")
 
 
 def test_join_game_room(session, client):
@@ -252,8 +254,8 @@ async def test_fail_to_join_full_game_room(
     response = client.post(f"/game_rooms/join/{game_room.id}?password=secret&user_name=latecomer")
     assert response.status_code == status.HTTP_409_CONFLICT
     data = response.json()
-    assert data["detail"]["code"] == ErrorCode.ROOM_FULL
-    assert data["detail"]["message"] == "The game room is full"
+    assert data["code"] == ErrorCode.ROOM_FULL
+    assert data["message"] == "The game room is full"
 
 
 @pytest.mark.asyncio
@@ -350,6 +352,7 @@ async def test_fail_to_end_game_room_when_called_by_non_admin(
     assert data == ApiErrorDetail(
         code=ErrorCode.FORBIDDEN,
         message="You do not have permission to end this game room",
+        should_refresh_token=True,
         role=UserRole.player,
         room_id=game_room.id,
         id=player.id,
@@ -367,6 +370,7 @@ async def test_fail_to_leave_a_game_room_if_not_in_one(
     assert data == ApiErrorDetail(
         code=ErrorCode.NOT_IN_GAME_ROOM,
         message="You are not in a game room",
+        should_refresh_token=True,
     ).model_dump()
 
 

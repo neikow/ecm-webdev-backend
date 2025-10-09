@@ -8,4 +8,4 @@ def test_get_game_class_for_game_type():
 
 
 def test_get_room_max_users():
-    assert get_game_class(GameType.connect_four).max_players == ConnectFour.max_players
+    assert get_game_class(GameType.connect_four).get_players_spec() == ConnectFour.get_players_spec()
