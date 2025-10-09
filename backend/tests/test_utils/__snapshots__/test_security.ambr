@@ -1,4 +1,7 @@
 # serializer version: 1
 # name: test_create_access_token
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6Im5hbm9pZCIsInJvb21faWQiOjEsInJvbGUiOiJhZG1pbiIsImV4cCI6OTAwfQ.YLz0ED-y0w9BtLFTdT2tNX9XD8VkTwXwREDTwtWleTU'
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwbGF5ZXIiOnsiaWQiOiJuYW5vaWQiLCJyb29tX2lkIjoxLCJyb2xlIjoiYWRtaW4ifSwidHlwIjoiYWNjZXNzIiwiZXhwIjo5MDB9.w8F1jUybacNYpuGw2KxgZ2JTwV_45JM09mJuLIljcnw'
+# ---
+# name: test_create_refresh_token
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJwbGF5ZXJfaWQiOiJuYW5vaWQiLCJyb29tX2lkIjowLCJ0eXAiOiJyZWZyZXNoIiwiZXhwIjo4NjQwMH0.jrOrX8bQjrIK_hEOoSu2zA7BS03y1QsSixbnnGxLp1w'
 # ---

@@ -8,8 +8,6 @@ export function useRoomPlayers() {
 
   useEffect(() => {
     return client.on((message) => {
-      console.log(message)
-
       if (message.type === 'snapshot') {
         setPlayers(message.data.players)
       }

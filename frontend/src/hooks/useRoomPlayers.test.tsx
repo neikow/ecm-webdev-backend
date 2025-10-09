@@ -1,4 +1,5 @@
 import type { Listener } from '../events/RoomEventClient.ts'
+import type { Player } from '../types/player.ts'
 import { act, cleanup, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GameRoomProvider } from '../providers/GameRoomProvider.tsx'
@@ -38,8 +39,10 @@ describe('useRoomPlayers', () => {
       ),
     })
 
-    expect(Array.isArray(result.current)).toBe(true)
-    expect(result.current).toHaveLength(0)
+    expect(Array.isArray(result.current.players)).toBe(true)
+    expect(Array.isArray(result.current.activePlayers)).toBe(true)
+    expect(result.current.players).toHaveLength(0)
+    expect(result.current.activePlayers).toHaveLength(0)
   })
 
   it('should reflect players from the store', () => {
@@ -52,17 +55,17 @@ describe('useRoomPlayers', () => {
       ),
     })
 
-    const players = [
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' as const },
-      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' as const },
+    const players: Player[] = [
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
     ]
 
     act(() => {
       playersResult.current.setPlayers(() => players)
     })
 
-    expect(roomPlayersResult.current).toHaveLength(2)
-    expect(roomPlayersResult.current).toEqual(players)
+    expect(roomPlayersResult.current.players).toHaveLength(2)
+    expect(roomPlayersResult.current.players).toEqual(players)
   })
 
   it('should update when client receives a snapshot event', () => {
@@ -82,18 +85,21 @@ describe('useRoomPlayers', () => {
         type: 'snapshot',
         last_seq: 1,
         data: {
+          status: 'waiting_for_players',
+          chat_messages: [],
+          room_id: 1,
           players: [
-            { id: '1', user_name: 'Alice', role: 'player' as const },
-            { id: '2', user_name: 'Bob', role: 'admin' as const },
+            { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+            { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
           ],
         },
       })
     })
 
-    expect(result.current).toHaveLength(2)
-    expect(result.current).toStrictEqual([
-      { id: '1', user_name: 'Alice', role: 'player' },
-      { id: '2', user_name: 'Bob', role: 'admin' },
+    expect(result.current.players).toHaveLength(2)
+    expect(result.current.players).toStrictEqual([
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
     ])
   })
 
@@ -108,8 +114,8 @@ describe('useRoomPlayers', () => {
 
     const { result: playersResult } = renderHook(() => usePlayersStore())
 
-    const players = [
-      { id: '1', user_name: 'Alice', role: 'player' as const },
+    const players: Player[] = [
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
     ]
 
     act(() => {
@@ -126,18 +132,19 @@ describe('useRoomPlayers', () => {
         event: {
           type: 'player.joined',
           data: {
+            status: 'connected',
+            role: 'admin',
             id: '2',
             user_name: 'Bob',
-            role: 'admin',
           },
         },
       })
     })
 
-    expect(result.current).toHaveLength(2)
-    expect(result.current).toEqual([
-      { id: '1', user_name: 'Alice', role: 'player' },
-      { id: '2', user_name: 'Bob', role: 'admin' },
+    expect(result.current.players).toHaveLength(2)
+    expect(result.current.players).toEqual([
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
     ])
   })
 
@@ -151,9 +158,9 @@ describe('useRoomPlayers', () => {
     })
     const { result: playersResult } = renderHook(() => usePlayersStore())
 
-    const players = [
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' as const },
-      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' as const },
+    const players: Player[] = [
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
     ]
 
     act(() => {
@@ -176,9 +183,14 @@ describe('useRoomPlayers', () => {
       })
     })
 
-    expect(result.current).toHaveLength(1)
-    expect(result.current).toEqual([
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' },
+    expect(result.current.players).toHaveLength(2)
+    expect(result.current.activePlayers).toHaveLength(1)
+    expect(result.current.players).toEqual([
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'disconnected' },
+    ])
+    expect(result.current.activePlayers).toEqual([
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
     ])
   })
 })

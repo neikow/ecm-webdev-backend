@@ -14,8 +14,9 @@ from backend.services.game_room_service import (
 )
 from backend.utils.db import get_session
 from backend.utils.errors import ErrorCode, APIException, ApiErrorDetail
-from backend.utils.security import current_player_data, add_authorization_cookie, create_access_token, \
-    remove_authorization_cookie
+from backend.utils.security import current_player_data, add_access_cookie, create_access_token, \
+    remove_authorization_cookie, AccessTokenData, remove_refresh_cookie, add_refresh_cookie, create_refresh_token, \
+    RefreshTokenData
 
 router = APIRouter(prefix="/game_rooms", tags=["game_rooms"])
 
@@ -80,10 +81,21 @@ async def create_game_room(
             event_store,
             event_bus
         )
-        add_authorization_cookie(
+        add_access_cookie(
             response,
             create_access_token(
-                player
+                AccessTokenData(
+                    player=player
+                )
+            )
+        )
+        add_refresh_cookie(
+            response,
+            create_refresh_token(
+                RefreshTokenData(
+                    player_id=player.id,
+                    room_id=player.room_id,
+                )
             )
         )
 
@@ -149,24 +161,24 @@ async def get_game_room(
             )
 
         if game_room.password != password:
-            raise HTTPException(
+            raise APIException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail={
-                    "code": ErrorCode.PASSWORD_INVALID,
-                    "message": "Invalid or missing password",
-                }
+                detail=ApiErrorDetail(
+                    code=ErrorCode.PASSWORD_INVALID,
+                    message="Invalid or missing password"
+                )
             )
         return GetGameRoomResponse(
             game_room=game_room,
             current_player=None
         )
     except GameRoomService.GameRoomDoesNotExist:
-        raise HTTPException(
-            status_code=404,
-            detail={
-                "code": ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
-                "message": "The requested game room does not exist",
-            }
+        raise APIException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=ApiErrorDetail(
+                code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
+                message="The requested game room does not exist"
+            )
         )
 
 
@@ -230,15 +242,31 @@ async def join_game_room(
             event_store=event_store,
             event_bus=event_bus
         )
-        add_authorization_cookie(response, create_access_token(user))
+        add_access_cookie(
+            response,
+            create_access_token(
+                AccessTokenData(
+                    player=user
+                )
+            )
+        )
+        add_refresh_cookie(
+            response,
+            create_refresh_token(
+                RefreshTokenData(
+                    player_id=user.id,
+                    room_id=user.room_id
+                )
+            )
+        )
         return user
     except GameRoomService.GameRoomIsFull:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_409_CONFLICT,
-            detail={
-                "code": ErrorCode.ROOM_FULL,
-                "message": "The game room is full",
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.ROOM_FULL,
+                message="The game room is full",
+            ),
         )
 
 
@@ -272,6 +300,7 @@ async def leave_game_room(
         event_bus=event_bus,
     )
     remove_authorization_cookie(response)
+    remove_refresh_cookie(response)
 
     return LeaveGameRoomResponse(
         message="You have successfully left the game room",
@@ -298,6 +327,7 @@ class EndGameRoomResponse(BaseModel):
 )
 async def end_game_room(
         game_room_id: int,
+        response: Response,
         session: Session = Depends(get_session),
         player_data: GamePlayerModel | None = Depends(current_player_data),
         event_store: MemoryEventStore = Depends(get_event_store),
@@ -321,6 +351,8 @@ async def end_game_room(
             event_store=event_store,
             event_bus=event_bus
         )
+        remove_refresh_cookie(response)
+        remove_authorization_cookie(response)
         return EndGameRoomResponse(
             success=success,
             message="Game room ended successfully" if success else "Failed to end the game room",

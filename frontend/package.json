@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "generate:types:dev": "openapi-typescript http://localhost:8000/openapi.json --output src/types/api.ts && eslint --fix src/types/api.ts"
+    "generate:types:dev": "NODE_EXTRA_CA_CERTS=\"../certs/localhost-8000.crt.pem\" openapi-typescript https://127.0.0.1:8000/openapi.json --output src/types/api.ts && eslint --fix src/types/api.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

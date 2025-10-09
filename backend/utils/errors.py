@@ -2,11 +2,13 @@ import enum
 
 from fastapi import HTTPException
 from pydantic import BaseModel, ConfigDict
+from starlette import status
 
 
 class ErrorCode(str, enum.Enum):
     INTERNAL_ERROR = "internal_error"
     FORBIDDEN = "forbidden"
+    NO_REFRESH_TOKEN = "no_refresh"
 
     ALREADY_IN_GAME_ROOM = "already_in_game_room"
     NOT_IN_GAME_ROOM = "not_in_game_room"
@@ -26,6 +28,7 @@ class ApiErrorDetail(BaseModel):
     )
 
     code: ErrorCode
+    should_refresh_token: bool = False
     message: str
 
 
@@ -34,6 +37,9 @@ class APIException(HTTPException):
                  status_code: int,
                  detail: ApiErrorDetail
                  ) -> None:
+        if status_code == status.HTTP_401_UNAUTHORIZED or status_code == status.HTTP_403_FORBIDDEN:
+            detail.should_refresh_token = True
+
         super().__init__(
             status_code=status_code,
             detail=detail.model_dump()

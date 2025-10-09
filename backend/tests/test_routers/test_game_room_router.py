@@ -7,8 +7,8 @@ from backend.models.game_room_model import GameType
 from backend.services.game_room_service import GameRoomService
 from backend.utils.errors import ErrorCode, ApiErrorDetail
 from backend.utils.game_utils import get_room_max_users
-from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE
-from backend.utils.security import verify_token
+from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE, AccessTokenData, REFRESH_COOKIE
+from backend.utils.security import verify_access_token
 
 
 def test_get_index(session, client):
@@ -82,9 +82,11 @@ def test_get_game_room_data_with_authentication_but_no_password(session, client)
     )
 
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
-        GamePlayerModel(
-            role=UserRole.player,
-            room_id=game_room.id,
+        AccessTokenData(
+            player=GamePlayerModel(
+                role=UserRole.player,
+                room_id=game_room.id,
+            )
         )
     )
 
@@ -111,10 +113,12 @@ def test_get_game_room_returns_the_user_id_in_the_response(session, client):
     )
 
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
-        GamePlayerModel(
-            role=UserRole.player,
-            room_id=game_room.id,
-            id="42",
+        AccessTokenData(
+            player=GamePlayerModel(
+                role=UserRole.player,
+                room_id=game_room.id,
+                id="42",
+            )
         )
     )
 
@@ -169,16 +173,20 @@ def test_creating_game_room_sets_the_user_as_admin(session, client):
     token = response.cookies[AUTHORIZATION_COOKIE]
     assert token is not None
 
-    player_data = verify_token(token)
+    player_data = verify_access_token(token).player
     assert player_data.role == UserRole.admin
     assert player_data.room_id == data["game_room"]["id"]
 
 
 def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
-    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(GamePlayerModel(
-        role=UserRole.player,
-        room_id=1,
-    ))
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=GamePlayerModel(
+                role=UserRole.player,
+                room_id=1,
+            )
+        )
+    )
 
     response = client.post(
         "/game_rooms/",
@@ -266,11 +274,16 @@ async def test_leave_game_room(
         event_store=mock_event_store,
         event_bus=mock_event_bus,
     )
-    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(player)
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=player
+        )
+    )
 
     response = client.post("/game_rooms/leave")
     assert response.status_code == status.HTTP_200_OK
     assert response.cookies.get(AUTHORIZATION_COOKIE) is None
+    assert response.cookies.get(REFRESH_COOKIE) is None
     data = response.json()
     assert data["message"] == "You have successfully left the game room"
 
@@ -294,7 +307,11 @@ async def test_end_game_room_should_end_an_active_game_when_called_by_admin(
         event_store=mock_event_store,
         event_bus=mock_event_bus,
     )
-    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(admin)
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=admin
+        )
+    )
 
     response = client.post(f"/game_rooms/{game_room.id}/end")
     assert response.status_code == status.HTTP_200_OK
@@ -321,7 +338,11 @@ async def test_fail_to_end_game_room_when_called_by_non_admin(
         event_store=mock_event_store,
         event_bus=mock_event_bus,
     )
-    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(player)
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=player
+        )
+    )
 
     response = client.post(f"/game_rooms/{game_room.id}/end")
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -368,7 +389,11 @@ async def test_fail_to_end_a_game_room_that_does_not_exist(
         event_store=mock_event_store,
         event_bus=mock_event_bus,
     )
-    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(admin)
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=admin
+        )
+    )
 
     session.delete(game_room)
     session.commit()

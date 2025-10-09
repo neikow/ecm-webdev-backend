@@ -33,7 +33,7 @@ export function PlayerList(props: PlayerListProps) {
     return (
       <div
         className={cn(
-          'skeleton',
+          'skeleton mb-4',
           props.className,
         )}
       >

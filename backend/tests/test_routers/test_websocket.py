@@ -8,7 +8,7 @@ from backend.infra.snapshots import SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.services.room_streamer import RoomStreamerService
 from backend.utils.future import build_future
-from backend.utils.security import AUTHORIZATION_COOKIE, create_access_token
+from backend.utils.security import AUTHORIZATION_COOKIE, create_access_token, AccessTokenData
 
 
 @pytest.mark.asyncio
@@ -23,11 +23,13 @@ async def test_websocket_connection_fails_without_auth(client):
 @pytest.mark.asyncio
 async def test_websocket_connection_succeeds_with_auth(client):
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
-        GamePlayerModel(
-            id="test_id",
-            user_name="test_user",
-            room_id=1,
-            role=UserRole.admin,
+        AccessTokenData(
+            player=GamePlayerModel(
+                id="test_id",
+                user_name="test_user",
+                room_id=1,
+                role=UserRole.admin,
+            )
         )
     )
     with client.websocket_connect('/ws/game_rooms/1') as ws:
@@ -37,11 +39,13 @@ async def test_websocket_connection_succeeds_with_auth(client):
 def test_websocket_connection_restores_history(client):
     room_id = 1
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
-        GamePlayerModel(
-            id="test_id",
-            user_name="test_user",
-            room_id=room_id,
-            role=UserRole.admin,
+        AccessTokenData(
+            player=GamePlayerModel(
+                id="test_id",
+                user_name="test_user",
+                room_id=room_id,
+                role=UserRole.admin,
+            )
         )
     )
 

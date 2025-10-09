@@ -107,6 +107,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/game_auth/refresh': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Refresh Token */
+    post: operations['refresh_token_game_auth_refresh_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -114,6 +131,11 @@ export interface components {
     /** ApiErrorDetail */
     ApiErrorDetail: {
       code: components['schemas']['ErrorCode']
+      /**
+       * Should Refresh Token
+       * @default false
+       */
+      should_refresh_token: boolean
       /** Message */
       message: string
     } & {
@@ -143,7 +165,7 @@ export interface components {
      * ErrorCode
      * @enum {string}
      */
-    ErrorCode: 'internal_error' | 'forbidden' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params' | 'ws_invalid_type' | 'ws_chat_message_missing_text'
+    ErrorCode: 'internal_error' | 'forbidden' | 'no_refresh' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params' | 'ws_invalid_type' | 'ws_chat_message_missing_text'
     /** GamePlayerModel */
     GamePlayerModel: {
       /** Id */
@@ -458,6 +480,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ApiErrorDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  refresh_token_game_auth_refresh_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: {
+        refresh?: string | null
+      }
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
         }
       }
       /** @description Validation Error */

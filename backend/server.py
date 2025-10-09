@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
+from backend.routers.game_auth_router import router as game_auth_router
 from backend.routers.game_room_router import router as game_room_router
 from backend.routers.websocket import router as websocket_router
 from backend.utils.db import create_db_and_tables
@@ -40,6 +41,7 @@ def api_error_handler(_, exc: APIException):
 
 app.include_router(game_room_router)
 app.include_router(websocket_router)
+app.include_router(game_auth_router)
 
 
 @asynccontextmanager

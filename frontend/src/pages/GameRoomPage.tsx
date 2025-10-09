@@ -2,6 +2,7 @@ import { useNavigate, useParams } from 'react-router'
 import { Chat } from '../components/game-room/Chat.tsx'
 import { Header } from '../components/game-room/Header.tsx'
 import { PlayerList } from '../components/game-room/PlayerList.tsx'
+import { usePeriodicTokensRefresh } from '../hooks/usePeriodicTokensRefresh.tsx'
 import { GameRoomProvider } from '../providers/GameRoomProvider.tsx'
 import { apiClient } from '../utils/fetch.ts'
 import { ErrorPage } from './ErrorPage.tsx'
@@ -11,9 +12,11 @@ export function GameRoomPage() {
   const roomId = Number(rawId)
   const navigate = useNavigate()
 
+  usePeriodicTokensRefresh()
+
   const { data, isError } = apiClient.useQuery('get', '/game_rooms/data/{game_room_id}/', {
-    retry: false,
     enabled: !Number.isNaN(roomId),
+    retry: false,
     params: {
       path: {
         game_room_id: Number(rawId),
