@@ -10,6 +10,10 @@ from backend.games.abstract import Game, PlayerSpec, Metadata, GameException, Ga
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
 
+P_1 = 1
+P_2 = 2
+EMPTY = 0
+
 ROWS = 6
 COLUMNS = 7
 
@@ -22,7 +26,7 @@ class ConnectFourState(str, enum.Enum):
 
 
 class ConnectFourGlobalState(BaseModel):
-    grid: list[list[int]] = Field(default_factory=lambda: [[0 for _ in range(COLUMNS)] for _ in range(ROWS)])
+    grid: list[list[int]] = Field(default_factory=lambda: [[EMPTY for _ in range(COLUMNS)] for _ in range(ROWS)])
     current_player: int = 0
     state: ConnectFourState = ConnectFourState.not_started
     winning_positions: list[tuple[int, int]] | None = None
@@ -31,7 +35,7 @@ class ConnectFourGlobalState(BaseModel):
 class PlayerActionData(BaseModel):
     player: Annotated[
         int,
-        Field(gt=0, lt=3)
+        Field(ge=P_1, le=P_2)
     ]
     column: Annotated[
         int,
@@ -117,14 +121,14 @@ class ConnectFour(Game):
     @staticmethod
     def _check_draw(grid: list[list[int]]) -> bool:
         for row in grid:
-            if 0 in row:
+            if EMPTY in row:
                 return False
         return True
 
     @staticmethod
     def _get_column_height(grid: list[list[int]], column: int) -> int:
         for row in range(ROWS - 1, -1, -1):
-            if grid[row][column] == 0:
+            if grid[row][column] == EMPTY:
                 return ROWS - 1 - row
         return ROWS
 
