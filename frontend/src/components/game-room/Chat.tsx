@@ -4,17 +4,18 @@ import { useCallback, useMemo, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { useRoomChat } from '../../hooks/useRoomChat.tsx'
+import { useCurrentPlayer } from '../../stores/useCurrentPlayer.tsx'
 import { usePlayersStore } from '../../stores/usePlayersStore.tsx'
 import { cn } from '../../utils/classes.ts'
 
 interface ChatProps {
   className?: ClassValue
-  currentPlayerId: string | undefined
 }
 
 const MessageSchema = z.object({ message: z.string().max(500, 'Message must be between 1 and 500 characters') })
 
 export function Chat(props: ChatProps) {
+  const { currentPlayer } = useCurrentPlayer()
   const {
     register,
     handleSubmit,
@@ -55,7 +56,7 @@ export function Chat(props: ChatProps) {
     return new Map(players.map(player => [player.id, player.user_name]))
   }, [players])
 
-  if (!props.currentPlayerId) {
+  if (!currentPlayer?.id) {
     return <div className="skeleton w-full h-full"></div>
   }
 
@@ -80,7 +81,7 @@ export function Chat(props: ChatProps) {
                   <div key={index} className="chat-message">
                     <div
                       className={cn('flex items-end', {
-                        'justify-end': msg.sender_id === props.currentPlayerId,
+                        'justify-end': msg.sender_id === currentPlayer.id,
                       })}
                     >
                       <div className="flex flex-col space-y-1 text-xs max-w-xs mx-2 order-2 items-start">
@@ -89,11 +90,11 @@ export function Chat(props: ChatProps) {
                         >
                           <span
                             className={cn('px-2 py-2 rounded-lg flex flex-col', {
-                              'bg-gray-200 text-gray-800': msg.sender_id !== props.currentPlayerId,
-                              'bg-primary text-white': msg.sender_id === props.currentPlayerId,
+                              'bg-gray-200 text-gray-800': msg.sender_id !== currentPlayer.id,
+                              'bg-primary text-white': msg.sender_id === currentPlayer.id,
                             })}
                           >
-                            {msg.sender_id !== props.currentPlayerId && (
+                            {msg.sender_id !== currentPlayer.id && (
                               <span className="font-bold mr-2">
                                 {userNames.get(msg.sender_id) || msg.sender_id}
                               </span>

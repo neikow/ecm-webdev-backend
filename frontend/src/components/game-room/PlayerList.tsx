@@ -1,11 +1,11 @@
 import type { Player } from '../../types/player.ts'
 import type { ClassValue } from '../../utils/classes.ts'
 import { useRoomPlayers } from '../../hooks/useRoomPlayers.tsx'
+import { useCurrentPlayer } from '../../stores/useCurrentPlayer.tsx'
 import { cn } from '../../utils/classes.ts'
 
 interface PlayerListProps {
   className?: ClassValue
-  currentPlayerId: string | undefined
 }
 
 function PlayerListItem(props: { player: Player, isCurrent: boolean }) {
@@ -28,8 +28,9 @@ function PlayerListItem(props: { player: Player, isCurrent: boolean }) {
 
 export function PlayerList(props: PlayerListProps) {
   const { activePlayers } = useRoomPlayers()
+  const { currentPlayer } = useCurrentPlayer()
 
-  if (!props.currentPlayerId) {
+  if (!currentPlayer?.id) {
     return (
       <div
         className={cn(
@@ -58,7 +59,7 @@ export function PlayerList(props: PlayerListProps) {
       </div>
       <ul className="flex flex-col gap-1 overflow-y-auto">
         {activePlayers.map((player, index) => (
-          <PlayerListItem key={`player-${index}`} player={player} isCurrent={props.currentPlayerId === player.id} />
+          <PlayerListItem key={`player-${index}`} player={player} isCurrent={currentPlayer.id === player.id} />
         ))}
       </ul>
     </div>

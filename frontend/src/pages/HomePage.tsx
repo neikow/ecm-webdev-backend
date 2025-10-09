@@ -5,6 +5,7 @@ import { useEffect, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { NavLink, useNavigate } from 'react-router'
 import { z } from 'zod'
+import { useCurrentPlayer } from '../stores/useCurrentPlayer.tsx'
 import { cn } from '../utils/classes.ts'
 import { apiClient } from '../utils/fetch.ts'
 
@@ -18,6 +19,7 @@ const JoinGameFormSchema = z.object({
 function JoinGameModal(props: {
   modalRef: RefObject<HTMLDialogElement | null>
 }) {
+  const { setCurrentPlayer } = useCurrentPlayer()
   const navigate = useNavigate()
   const {
     register,
@@ -31,6 +33,13 @@ function JoinGameModal(props: {
 
   const { isPending, mutate: joinGameRoom } = apiClient.useMutation('post', '/game_rooms/join/{game_room_id}', {
     onSuccess: (data) => {
+      setCurrentPlayer({
+        id: data.id!,
+        user_name: data.user_name,
+        role: data.role,
+        room_id: data.room_id,
+        status: 'connected',
+      })
       navigate(`/game-rooms/${data.room_id}`)
     },
     onError: (error) => {
@@ -39,6 +48,7 @@ function JoinGameModal(props: {
         setError('root', { message: 'This game room is full' })
       }
       else {
+        console.error(errorData)
         setError('root', { message: 'An error occured when trying to join the game' })
       }
     },

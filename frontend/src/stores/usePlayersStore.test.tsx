@@ -1,3 +1,4 @@
+import type { Player } from '../types/player.ts'
 import { act, renderHook } from '@testing-library/react'
 import { beforeEach, describe, expect, it } from 'vitest'
 import { usePlayersStore } from './usePlayersStore.tsx'
@@ -14,9 +15,9 @@ describe('usePlayersStore', () => {
 
   it('should set players', () => {
     const { result } = renderHook(() => usePlayersStore())
-    const players = [
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' as const },
-      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' as const },
+    const players: Player[] = [
+      { id: '1', user_name: 'Alice', room_id: 1, role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin', status: 'connected' },
     ]
 
     act(() => {
@@ -29,12 +30,12 @@ describe('usePlayersStore', () => {
 
   it('should replace existing players when setPlayers is called', () => {
     const { result } = renderHook(() => usePlayersStore())
-    const initialPlayers = [
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' as const },
+    const initialPlayers: Player[] = [
+      { id: '1', user_name: 'Alice', room_id: 1, role: 'player', status: 'connected' },
     ]
-    const newPlayers = [
-      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' as const },
-      { id: '3', user_name: 'Charlie', room_id: 1, role: 'player' as const },
+    const newPlayers: Player[] = [
+      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin', status: 'connected' },
+      { id: '3', user_name: 'Charlie', room_id: 1, role: 'player', status: 'connected' },
     ]
 
     act(() => {
@@ -54,10 +55,10 @@ describe('usePlayersStore', () => {
 
   it('should update players using a function', () => {
     const { result } = renderHook(() => usePlayersStore())
-    const initialPlayers = [
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' as const },
+    const initialPlayers: Player[] = [
+      { id: '1', user_name: 'Alice', room_id: 1, role: 'player', status: 'connected' },
     ]
-    const additionalPlayer = { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' as const }
+    const additionalPlayer: Player = { id: '2', user_name: 'Bob', room_id: 1, role: 'admin', status: 'connected' }
 
     act(() => {
       result.current.setPlayers(initialPlayers)
@@ -72,8 +73,8 @@ describe('usePlayersStore', () => {
 
     expect(result.current.players).toHaveLength(2)
     expect(result.current.players).toEqual([
-      { id: '1', user_name: 'Alice', room_id: 1, role: 'player' },
-      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin' },
-    ])
+      { id: '1', user_name: 'Alice', room_id: 1, role: 'player', status: 'connected' },
+      { id: '2', user_name: 'Bob', room_id: 1, role: 'admin', status: 'connected' },
+    ] satisfies Player[])
   })
 })

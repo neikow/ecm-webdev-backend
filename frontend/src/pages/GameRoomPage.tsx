@@ -1,9 +1,12 @@
+import { useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router'
 import { Chat } from '../components/game-room/Chat.tsx'
+import { GameBoard } from '../components/game-room/GameBoard.tsx'
 import { Header } from '../components/game-room/Header.tsx'
 import { PlayerList } from '../components/game-room/PlayerList.tsx'
 import { usePeriodicTokensRefresh } from '../hooks/usePeriodicTokensRefresh.tsx'
 import { GameRoomProvider } from '../providers/GameRoomProvider.tsx'
+import { useCurrentPlayer } from '../stores/useCurrentPlayer.tsx'
 import { apiClient } from '../utils/fetch.ts'
 import { ErrorPage } from './ErrorPage.tsx'
 
@@ -11,6 +14,7 @@ export function GameRoomPage() {
   const { id: rawId } = useParams<'id'>()
   const roomId = Number(rawId)
   const navigate = useNavigate()
+  const { setCurrentPlayer } = useCurrentPlayer()
 
   usePeriodicTokensRefresh()
 
@@ -23,6 +27,21 @@ export function GameRoomPage() {
       },
     },
   })
+
+  useEffect(() => {
+    if (data?.current_player) {
+      setCurrentPlayer({
+        id: data.current_player.id!,
+        user_name: data.current_player.user_name,
+        role: data.current_player.role,
+        room_id: data.current_player.room_id,
+        status: 'connected',
+      })
+    }
+    else {
+      setCurrentPlayer(null)
+    }
+  }, [data])
 
   if (Number.isNaN(roomId) || isError) {
     return (
@@ -40,13 +59,11 @@ export function GameRoomPage() {
         <div className="grid grid-cols-7 items-center h-[calc(100vh-96px)]">
           <div className="col-span-1 h-full"></div>
           <div className="col-span-4 h-full pr-4">
-            <div className="w-full h-full card bg-base-200 shadow-md p-4">
-
-            </div>
+            <GameBoard />
           </div>
           <div className="col-span-2 pr-4 flex flex-col h-[calc(100vh-96px)]">
-            <PlayerList className="min-h-48 max-h-64 flex-shrink-0" currentPlayerId={data?.current_player?.id} />
-            <Chat className="flex-1 min-h-0" currentPlayerId={data?.current_player?.id} />
+            <PlayerList className="min-h-48 max-h-64 flex-shrink-0" />
+            <Chat className="flex-1 min-h-0" />
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
-export interface Player {
-  user_name: string
+import type { API } from './index.ts'
+
+export type Player = API['GamePlayerModel'] & {
   id: string
-  role: 'admin' | 'player'
   /*
    The status of the player in the room
     - 'connected': The player is currently connected to the room.
