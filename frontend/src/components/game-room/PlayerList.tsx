@@ -29,6 +29,18 @@ function PlayerListItem(props: { player: Player, isCurrent: boolean }) {
 export function PlayerList(props: PlayerListProps) {
   const { activePlayers } = useRoomPlayers()
 
+  if (!props.currentPlayerId) {
+    return (
+      <div
+        className={cn(
+          'skeleton',
+          props.className,
+        )}
+      >
+      </div>
+    )
+  }
+
   return (
     <div
       className={cn(
