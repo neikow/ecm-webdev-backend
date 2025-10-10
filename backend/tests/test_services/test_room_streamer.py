@@ -11,7 +11,7 @@ from backend.domain.events import BaseEvent, RoomEvent
 from backend.events.bus import EventBus
 from backend.infra.snapshots import SnapshotBase
 from backend.models.game_player_model import GamePlayerModel
-from backend.routers.websocket_schemas import ClientMessageType, ClientMessageErrorCode
+from backend.schemas.websocket.client import ClientMessageType, ClientMessageErrorCode
 from backend.services.room_streamer import RoomStreamerService
 from backend.utils.future import build_future
 

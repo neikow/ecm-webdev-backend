@@ -80,6 +80,8 @@ export class RoomEventClient {
     )
   }
 
+  sendWithResponse(data: ClientMessage)
+
   reconnect() {
     this.retries += 1
     const seq: number = this.lastSeq ?? Number.parseInt(

@@ -7,8 +7,9 @@ from starlette.responses import JSONResponse
 from backend.routers.game_auth_router import router as game_auth_router
 from backend.routers.game_room_router import router as game_room_router
 from backend.routers.websocket import router as websocket_router
-from backend.routers.websocket_schemas import WSMessageBase, WSMessageSnapshot, WSMessageEvent, WSMessagePing, \
-    WSMessageError, WSMessageResponse, ClientMessageBase, ClientMessageChatMessage, ClientMessagePing
+from backend.schemas.websocket.client import ClientMessageBase, ClientMessagePing, ClientMessageChatMessage
+from backend.schemas.websocket.server import WSMessageBase, WSMessageSnapshot, WSMessageEvent, WSMessagePing, \
+    WSMessageError, WSMessageResponse
 from backend.utils.db import create_db_and_tables
 from backend.utils.env import get_env
 from backend.utils.errors import APIException

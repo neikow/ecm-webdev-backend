@@ -9,9 +9,10 @@ from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.infra.snapshots import SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel
-from backend.routers.websocket_schemas import WSMessageSnapshot, ClientMessageType, WSMessageEvent, \
-    WSMessagePing, ClientMessageChatMessage, ClientMessageBase, WSMessageResponse, WSMessageError, \
-    ClientMessageErrorCode, WSMessageType
+from backend.schemas.websocket.client import ClientMessageChatMessage, ClientMessageErrorCode, ClientMessageBase, \
+    ClientMessageType
+from backend.schemas.websocket.server import WSMessageSnapshot, WSMessageType, WSMessageEvent, WSMessagePing, \
+    WSMessageResponse, WSMessageError
 
 logger = getLogger(__name__)
 

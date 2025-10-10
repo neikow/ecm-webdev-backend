@@ -251,7 +251,7 @@ export interface components {
      * ClientMessageType
      * @enum {string}
      */
-    ClientMessageType: 'ping' | 'chat_message'
+    ClientMessageType: 'ping' | 'chat_message' | 'action'
     /** CreateGameRoomData */
     CreateGameRoomData: {
       game_type: components['schemas']['GameType']
