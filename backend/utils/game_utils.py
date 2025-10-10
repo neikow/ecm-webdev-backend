@@ -1,11 +1,10 @@
 from backend.games.abstract import Game
+from backend.games.connect_four.game import ConnectFour
 from backend.models.game_room_model import GameType
 
 
 def get_game_class(game_type: GameType) -> type[Game]:
     if game_type == GameType.connect_four:
-        from backend.games.connect_four import ConnectFour
-
         return ConnectFour
 
     raise ValueError(f"Unsupported game type: {game_type}")

@@ -1,46 +1,12 @@
-import enum
 from random import randint
-from typing import Annotated
-
-from pydantic import BaseModel, Field
 
 from backend.domain.events import BaseEvent, GameEvent
 from backend.events.bus import EventBus
-from backend.games.abstract import Game, PlayerSpec, Metadata, GameException, GameExceptionType
+from backend.games.abstract import Game, Metadata, PlayerSpec, GameException, GameExceptionType
+from backend.games.connect_four.consts import P_1, P_2, ROWS, COLUMNS, EMPTY
+from backend.games.connect_four.schemas import ConnectFourGlobalState, ConnectFourState, ConnectFourActionData
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
-
-P_1 = 1
-P_2 = 2
-EMPTY = 0
-
-ROWS = 6
-COLUMNS = 7
-
-
-class ConnectFourState(str, enum.Enum):
-    not_started = "not_started"
-    ongoing = "ongoing"
-    draw = "draw"
-    win = "win"
-
-
-class ConnectFourGlobalState(BaseModel):
-    grid: list[list[int]] = Field(default_factory=lambda: [[EMPTY for _ in range(COLUMNS)] for _ in range(ROWS)])
-    current_player: int = 0
-    state: ConnectFourState = ConnectFourState.not_started
-    winning_positions: list[tuple[int, int]] | None = None
-
-
-class PlayerActionData(BaseModel):
-    player: Annotated[
-        int,
-        Field(ge=P_1, le=P_2)
-    ]
-    column: Annotated[
-        int,
-        Field(ge=0, lt=COLUMNS)
-    ]
 
 
 class ConnectFour(Game):
@@ -89,7 +55,7 @@ class ConnectFour(Game):
                 message=f"Game has already started."
             )
         self._global_state.state = ConnectFourState.ongoing
-        self._global_state.current_player = randint(1, 2)
+        self._global_state.current_player = randint(P_1, P_2)
         event = await self.event_store.append(
             room_id=self.game_room.id,
             event_type=GameEvent.GAME_STATE_UPDATE,
@@ -138,7 +104,7 @@ class ConnectFour(Game):
                 exception_type=GameExceptionType.state_incompatibility,
                 message=f"Game is not ongoing, cannot perform actions."
             )
-        action_data = PlayerActionData(**event.data)
+        action_data = ConnectFourActionData.model_validate(event.data)
         if action_data.player != self._global_state.current_player:
             raise GameException(
                 exception_type=GameExceptionType.wrong_player,
@@ -179,6 +145,6 @@ class ConnectFour(Game):
         if event.type == GameEvent.GAME_START:
             await self._handle_game_start(event)
             return
-        if event.type == GameEvent.PLAYER_ACTION:
+        elif event.type == GameEvent.PLAYER_ACTION:
             await self._handle_player_action(event)
             return

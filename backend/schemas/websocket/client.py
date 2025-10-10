@@ -3,6 +3,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from backend.games.connect_four.schemas import ConnectFourActionData
+
 
 class ClientMessageErrorCode(str, enum.Enum):
     INVALID_MESSAGE = "invalid_message"
@@ -13,6 +15,7 @@ class ClientMessageType(str, enum.Enum):
     PING = "ping"
     CHAT_MESSAGE = "chat_message"
     ACTION = "action"
+    GAME_START = "game_start"
 
 
 class ClientMessageException(Exception):
@@ -39,6 +42,13 @@ class ClientMessageChatMessage(ClientMessageBase):
         code = ClientMessageErrorCode.INVALID_MESSAGE
 
 
+class ClientMessageGameStart(ClientMessageBase):
+    type: Literal[ClientMessageType.GAME_START] = ClientMessageType.GAME_START
+
+
 class ClientMessageGameAction(ClientMessageBase):
     type: Literal[ClientMessageType.ACTION] = ClientMessageType.ACTION
-    action: dict
+    data: ConnectFourActionData
+
+
+ClientMessage = ClientMessagePing | ClientMessageChatMessage | ClientMessageGameStart | ClientMessageGameAction

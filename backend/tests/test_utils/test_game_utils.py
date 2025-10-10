@@ -1,4 +1,4 @@
-from backend.games.connect_four import ConnectFour
+from backend.games.connect_four.game import ConnectFour
 from backend.models.game_room_model import GameType
 from backend.utils.game_utils import get_game_class
 

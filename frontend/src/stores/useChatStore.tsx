@@ -1,10 +1,7 @@
+import type { API } from '../types'
 import { create } from 'zustand/react'
 
-export interface MessageData {
-  type: 'text'
-  sender_id: string
-  value: string
-}
+export type MessageData = API['SnapshotChatMessage']
 
 interface ChatState {
   messages: MessageData[]

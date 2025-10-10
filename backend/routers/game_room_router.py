@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlmodel import Session
 from starlette import status
@@ -109,12 +109,12 @@ async def create_game_room(
         )
 
     except GameRoomService.PasswordAlreadyInUse:
-        raise HTTPException(
+        raise APIException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail={
-                "code": ErrorCode.PASSWORD_USED,
-                "message": "The password is already in use",
-            },
+            detail=ApiErrorDetail(
+                code=ErrorCode.PASSWORD_USED,
+                message="The password is already in use",
+            ),
         )
 
 

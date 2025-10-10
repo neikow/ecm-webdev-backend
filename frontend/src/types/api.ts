@@ -212,12 +212,6 @@ export interface components {
         [key: string]: unknown
       }
     }
-    /** ClientMessageBase */
-    ClientMessageBase: {
-      type: components['schemas']['ClientMessageType']
-      /** Event Key */
-      event_key?: string | null
-    }
     /** ClientMessageChatMessage */
     ClientMessageChatMessage: {
       /**
@@ -236,6 +230,29 @@ export interface components {
      * @enum {string}
      */
     ClientMessageErrorCode: 'invalid_message' | 'unknown_type'
+    /** ClientMessageGameAction */
+    ClientMessageGameAction: {
+      /**
+       * Type
+       * @default action
+       * @constant
+       */
+      type: 'action'
+      /** Event Key */
+      event_key?: string | null
+      data: components['schemas']['ConnectFourActionData']
+    }
+    /** ClientMessageGameStart */
+    ClientMessageGameStart: {
+      /**
+       * Type
+       * @default game_start
+       * @constant
+       */
+      type: 'game_start'
+      /** Event Key */
+      event_key?: string | null
+    }
     /** ClientMessagePing */
     ClientMessagePing: {
       /**
@@ -247,11 +264,13 @@ export interface components {
       /** Event Key */
       event_key?: string | null
     }
-    /**
-     * ClientMessageType
-     * @enum {string}
-     */
-    ClientMessageType: 'ping' | 'chat_message' | 'action'
+    /** ConnectFourActionData */
+    ConnectFourActionData: {
+      /** Player */
+      player: number
+      /** Column */
+      column: number
+    }
     /** CreateGameRoomData */
     CreateGameRoomData: {
       game_type: components['schemas']['GameType']
@@ -827,7 +846,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['ClientMessageBase'] | components['schemas']['ClientMessagePing'] | components['schemas']['ClientMessageChatMessage'] | null
+          'application/json': components['schemas']['ClientMessagePing'] | components['schemas']['ClientMessageChatMessage'] | components['schemas']['ClientMessageGameStart'] | components['schemas']['ClientMessageGameAction'] | null
         }
       }
     }

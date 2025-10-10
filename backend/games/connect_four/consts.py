@@ -1,0 +1,6 @@
+P_1 = 1
+P_2 = 2
+EMPTY = 0
+
+ROWS = 6
+COLUMNS = 7

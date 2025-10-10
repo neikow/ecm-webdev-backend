@@ -20,6 +20,9 @@ export function GameRoomProvider(props: {
 
   useEffect(() => {
     client.connect()
+    return () => {
+      client.close()
+    }
   }, [])
 
   const value = useMemo(() => ({

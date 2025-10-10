@@ -76,7 +76,6 @@ class RoomStreamerService:
         try:
             chat_message = ClientMessageChatMessage.model_validate(raw_json)
             text = chat_message.text.strip()
-            print('"', text, '"')
             if not text:
                 raise ClientMessageChatMessage.InvalidMessage
             event = await store.append(
@@ -136,6 +135,10 @@ class RoomStreamerService:
                         raw_json,
                         message_base.event_key
                     )
+                elif typ == ClientMessageType.GAME_START:
+                    pass
+                elif typ == ClientMessageType.ACTION:
+                    pass
 
                 if result and message_base.event_key:
                     await ws.send_json(

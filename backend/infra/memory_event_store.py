@@ -12,6 +12,8 @@ class MemoryEventStore:
     _locks: dict[int, asyncio.Lock]
 
     def __init__(self):
+        logger.info("Initializing MemoryEventStore")
+
         self._events = defaultdict(list)
         self._locks = defaultdict(asyncio.Lock)
 

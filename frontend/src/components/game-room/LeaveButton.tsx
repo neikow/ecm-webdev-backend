@@ -24,10 +24,11 @@ export function LeaveButton(
   return (
     <button
       className={cn(
-        ['btn btn-primary', {
+        'btn btn-primary',
+        {
           'btn-error': isError,
           'btn-disabled loading': isPending,
-        }],
+        },
       )}
       onClick={() => leaveGame({})}
     >

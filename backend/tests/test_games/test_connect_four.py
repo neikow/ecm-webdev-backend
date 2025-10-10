@@ -3,9 +3,10 @@ import time_machine
 from flexmock import flexmock
 
 from backend.domain.events import BaseEvent, GameEvent
-from backend.games import connect_four
 from backend.games.abstract import GameException, GameExceptionType
-from backend.games.connect_four import ConnectFour, ConnectFourState, PlayerActionData
+from backend.games.connect_four import game as connect_four
+from backend.games.connect_four.game import ConnectFour
+from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData
 from backend.models.game_room_model import GameRoomModel
 from backend.utils.future import build_future
 
@@ -173,7 +174,7 @@ async def test_connect_four_handle_player_action(
             seq=1,
             actor_id="player1",
             room_id=game_room.id,
-            data=PlayerActionData(
+            data=ConnectFourActionData(
                 player=1,
                 column=3,
             ).model_dump(),
@@ -230,7 +231,7 @@ async def test_connect_four_handle_player_action_out_of_turn(
                 seq=1,
                 actor_id="player2",
                 room_id=game_room.id,
-                data=PlayerActionData(
+                data=ConnectFourActionData(
                     player=2,
                     column=3,
                 ).model_dump(),
@@ -275,7 +276,7 @@ async def test_connect_four_handle_player_action_column_full(
                 seq=7,
                 actor_id="player1",
                 room_id=game_room.id,
-                data=PlayerActionData(
+                data=ConnectFourActionData(
                     player=1,
                     column=3,
                 ).model_dump(),
@@ -301,7 +302,7 @@ async def test_connect_four_handle_player_action_wrong_state(
                 seq=0,
                 actor_id="player1",
                 room_id=game_room.id,
-                data=PlayerActionData(
+                data=ConnectFourActionData(
                     player=1,
                     column=3,
                 ).model_dump(),
@@ -337,7 +338,7 @@ async def test_connect_four_handle_player_action_invalid_column(
                 seq=1,
                 actor_id="player1",
                 room_id=game_room.id,
-                data=PlayerActionData(
+                data=ConnectFourActionData(
                     player=1,
                     column=7,  # Invalid column, should be between 0 and 6
                 ).model_dump(),
@@ -462,7 +463,7 @@ async def test_connect_four_handle_player_action_winning_move(
             seq=1,
             actor_id="player1",
             room_id=game_room.id,
-            data=PlayerActionData(
+            data=ConnectFourActionData(
                 player=1,
                 column=3,
             ).model_dump(),
@@ -528,7 +529,7 @@ async def test_connect_four_handle_player_action_draw_move(
             seq=1,
             actor_id="player2",
             room_id=game_room.id,
-            data=PlayerActionData(
+            data=ConnectFourActionData(
                 player=2,
                 column=3,
             ).model_dump(),

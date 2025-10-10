@@ -7,14 +7,28 @@ export type ServerMessage
     | API['WSMessageResponse']
     | API['WSMessagePing']
 
-export type ClientMessage = API['ClientMessageChatMessage'] | API['ClientMessagePing'] | {
-  type: 'action'
-  action: string
-  request_id: string
-  data: Record<string, unknown>
-}
+export type ClientMessage
+  = | API['ClientMessageChatMessage']
+    | API['ClientMessagePing']
+    | API['ClientMessageGameAction']
+    | API['ClientMessageGameStart']
 
 export type Listener = (msg: ServerMessage) => void
+
+export class WebsocketClosedError extends Error {
+}
+
+export class ResponseTimeoutError extends Error {
+}
+
+export class WebsocketResponseError extends Error {
+  code: API['WSMessageError']['code'] | 'unknown'
+
+  constructor(data: API['WSMessageError'] | undefined) {
+    super(data?.message)
+    this.code = data?.code ?? 'unknown'
+  }
+}
 
 export class RoomEventClient {
   private ws?: WebSocket
@@ -22,6 +36,7 @@ export class RoomEventClient {
   private readonly roomId: number
   private lastSeq: number | null
   private listeners: Set<Listener>
+  private closedByUser: boolean = false
 
   private retriesDelay: number[] = [
     500,
@@ -64,23 +79,67 @@ export class RoomEventClient {
       this.listeners.forEach(listener => listener(msg))
     }
     this.ws!.onclose = () => {
-      setTimeout(
-        () => this.reconnect(),
-        this.currentRetryDelay,
-      )
+      if (!this.closedByUser) {
+        setTimeout(
+          () => {
+            if (this.closedByUser) {
+              return
+            }
+            this.reconnect()
+          },
+          this.currentRetryDelay,
+        )
+      }
     }
   }
 
   send(data: ClientMessage) {
     if (!this.ws) {
-      throw new Error('WebSocket is not connected')
+      throw new WebsocketClosedError('WebSocket is not connected')
     }
     this.ws.send(
       JSON.stringify(data),
     )
   }
 
-  sendWithResponse(data: ClientMessage)
+  sendWithResponse(
+    data: Omit<ClientMessage, 'event_key'>,
+    timeoutMs: number = 5000,
+  ) {
+    return new Promise<boolean>((resolve, reject) => {
+      if (!this.ws) {
+        return reject(new WebsocketClosedError('WebSocket is not connected'))
+      }
+
+      const eventKey = crypto.randomUUID() // If this key is too long, switch to nanoid
+
+      const dataWithKey = {
+        ...data,
+        event_key: eventKey,
+      } as ClientMessage
+
+      const onMessage: Listener = (msg) => {
+        if (msg.type === 'response' && msg.event_key === eventKey) {
+          this.listeners.delete(onMessage)
+
+          if (msg.success) {
+            resolve(true)
+          }
+
+          reject(new WebsocketResponseError(msg.error || undefined))
+        }
+      }
+
+      setTimeout(() => {
+        this.listeners.delete(onMessage)
+        reject(new ResponseTimeoutError('Response timed out'))
+      }, timeoutMs)
+
+      this.send(dataWithKey)
+
+      this.listeners.add(onMessage)
+    })
+  }
 
   reconnect() {
     this.retries += 1
@@ -107,6 +166,8 @@ export class RoomEventClient {
   }
 
   close() {
+    this.closedByUser = true
+    this.listeners.clear()
     this.ws?.close()
   }
 }
