@@ -11,9 +11,8 @@ from backend.domain.events import BaseEvent, RoomEvent
 from backend.events.bus import EventBus
 from backend.infra.snapshots import SnapshotBase
 from backend.models.game_player_model import GamePlayerModel
-from backend.routers.websocket_schemas import ClientMessageType
+from backend.routers.websocket_schemas import ClientMessageType, ClientMessageErrorCode
 from backend.services.room_streamer import RoomStreamerService
-from backend.utils.errors import ErrorCode
 from backend.utils.future import build_future
 
 
@@ -110,24 +109,6 @@ async def test_stream_room_events_should_send_ws_message_events_when_they_arrive
 
 
 @pytest.mark.asyncio
-async def test_send_ws_error(client):
-    ws = flexmock()
-    ws.should_receive("send_json").once().with_args(
-        {
-            "type": "error",
-            "code": ErrorCode.WS_INVALID_TYPE.value,
-            "message": "Invalid message type",
-        }
-    ).and_return(build_future(None))
-
-    await RoomStreamerService.send_ws_message_error(
-        ws=ws,  # type: ignore[arg-type]
-        code=ErrorCode.WS_INVALID_TYPE,
-        message="Invalid message type"
-    )
-
-
-@pytest.mark.asyncio
 async def test_send_ws_message_event() -> None:
     event = BaseEvent(
         room_id=1,
@@ -146,25 +127,6 @@ async def test_send_ws_message_event() -> None:
     await RoomStreamerService.send_ws_message_event(
         ws,  # type: ignore[arg-type]
         event
-    )
-
-
-@pytest.mark.asyncio
-async def test_send_ws_message_error() -> None:
-    error_code = ErrorCode.WS_INVALID_TYPE
-    message = "Invalid message type"
-    ws = flexmock()
-    ws.should_receive("send_json").once().with_args(
-        {
-            "type": "error",
-            "code": error_code.value,
-            "message": message,
-        }
-    ).and_return(build_future(None))
-    await RoomStreamerService.send_ws_message_error(
-        ws,  # type: ignore[arg-type]
-        code=error_code,
-        message=message,
     )
 
 
@@ -245,7 +207,7 @@ async def test_room_streamer_should_receive_client_ping(
             },
     ) as complete_future:
         ws.should_receive('send_json').with_args({
-            "type": ClientMessageType.PING,
+            "type": ClientMessageType.PING.value,
             "timestamp": 1735729200000  # 2025-01-01 12:00:00 in milliseconds
         }).once().replace_with(
             lambda _: complete_future()
@@ -276,8 +238,8 @@ async def test_room_streamer_sends_an_error_on_missing_type(
     ) as complete_future:
         ws.should_receive('send_json').with_args({
             "type": "error",
-            "code": ErrorCode.WS_INVALID_TYPE.value,
-            "message": "type field is required"
+            "code": ClientMessageErrorCode.INVALID_MESSAGE.value,
+            "message": "Invalid message format"
         }).once().replace_with(
             lambda _: complete_future()
         )
@@ -349,8 +311,98 @@ async def test_room_streamer_sends_an_error_on_missing_chat_text(
     ) as complete_future:
         ws.should_receive('send_json').with_args({
             "type": "error",
-            "code": ErrorCode.WS_CHAT_MESSAGE_MISSING_TEXT.value,
-            "message": "text field is required"
+            "code": ClientMessageErrorCode.INVALID_MESSAGE.value,
+            "message": "Malformed chat message"
+        }).once().replace_with(
+            lambda _: complete_future()
+        )
+
+
+@pytest.mark.asyncio
+@time_machine.travel("2025-01-01 12:00:00", tick=False)
+async def test_room_streamer_sends_response_on_event_key(
+        mock_event_store,
+        mock_event_bus
+):
+    ws = flexmock()
+    event_key = "test_event_key"
+    message_value = "Hello, World!"
+    current_user = GamePlayerModel(
+        id="user1",
+        user_name="Player 1",
+        role="player",
+        room_id=1,
+    )
+
+    async with perform_receive_client_messages_test(
+            ws,
+            mock_event_store,
+            mock_event_bus,
+            current_user,
+            {
+                "type": ClientMessageType.CHAT_MESSAGE.value,
+                "text": message_value,
+                "event_key": event_key
+            },
+    ) as complete_future:
+        mock_event_bus.should_receive('publish').with_args(
+            event=BaseEvent(
+                room_id=current_user.room_id,
+                actor_id=current_user.id,
+                type=RoomEvent.MESSAGE_SENT,
+                data={
+                    "sender_id": current_user.id,
+                    "value": message_value
+                },
+                seq=1,  # seq is set by the event store, so it will be 1 here
+            )
+        ).once().replace_with(
+            lambda event: build_future(None)
+        )
+        ws.should_receive('send_json').with_args({
+            "type": "response",
+            "event_key": event_key,
+            "success": True,
+            "error": None
+        }).once().replace_with(
+            lambda _: complete_future()
+        )
+
+
+@pytest.mark.asyncio
+async def test_room_streamer_sends_error_response_on_malformed_chat_message(
+        mock_event_store,
+        mock_event_bus
+):
+    ws = flexmock()
+    event_key = "test_event_key"
+    current_user = GamePlayerModel(
+        id="user1",
+        user_name="Player 1",
+        role="player",
+        room_id=1,
+    )
+
+    async with perform_receive_client_messages_test(
+            ws,
+            mock_event_store,
+            mock_event_bus,
+            current_user,
+            {
+                "type": ClientMessageType.CHAT_MESSAGE.value,
+                "text": '',
+                "event_key": event_key
+            },
+    ) as complete_future:
+        ws.should_receive('send_json').with_args({
+            "type": "response",
+            "event_key": event_key,
+            "success": False,
+            "error": {
+                "type": "error",
+                "code": ClientMessageErrorCode.INVALID_MESSAGE.value,
+                "message": "Malformed chat message"
+            }
         }).once().replace_with(
             lambda _: complete_future()
         )

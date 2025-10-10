@@ -107,6 +107,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/game_rooms/{game_room_id}/snapshot/': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Game Room Snapshot */
+    get: operations['get_game_room_snapshot_game_rooms__game_room_id__snapshot__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/game_auth/refresh': {
     parameters: {
       query?: never
@@ -118,6 +135,40 @@ export interface paths {
     put?: never
     /** Refresh Token */
     post: operations['refresh_token_game_auth_refresh_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/types/ws/server': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Types Server */
+    get: operations['get_types_server_types_ws_server_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/types/ws/client': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Types Client */
+    get: operations['get_types_client_types_ws_client_get']
+    put?: never
+    post?: never
     delete?: never
     options?: never
     head?: never
@@ -141,6 +192,66 @@ export interface components {
     } & {
       [key: string]: unknown
     }
+    /** BaseEvent */
+    BaseEvent: {
+      /** Seq */
+      seq: number
+      /** Room Id */
+      room_id: number
+      /** Type */
+      type: components['schemas']['RoomEvent'] | components['schemas']['GameEvent'] | string
+      /**
+       * Ts
+       * Format: date-time
+       */
+      ts?: string
+      /** Actor Id */
+      actor_id?: string | null
+      /** Data */
+      data?: {
+        [key: string]: unknown
+      }
+    }
+    /** ClientMessageBase */
+    ClientMessageBase: {
+      type: components['schemas']['ClientMessageType']
+      /** Event Key */
+      event_key?: string | null
+    }
+    /** ClientMessageChatMessage */
+    ClientMessageChatMessage: {
+      /**
+       * Type
+       * @default chat_message
+       * @constant
+       */
+      type: 'chat_message'
+      /** Event Key */
+      event_key?: string | null
+      /** Text */
+      text: string
+    }
+    /**
+     * ClientMessageErrorCode
+     * @enum {string}
+     */
+    ClientMessageErrorCode: 'invalid_message' | 'unknown_type'
+    /** ClientMessagePing */
+    ClientMessagePing: {
+      /**
+       * Type
+       * @default ping
+       * @constant
+       */
+      type: 'ping'
+      /** Event Key */
+      event_key?: string | null
+    }
+    /**
+     * ClientMessageType
+     * @enum {string}
+     */
+    ClientMessageType: 'ping' | 'chat_message'
     /** CreateGameRoomData */
     CreateGameRoomData: {
       game_type: components['schemas']['GameType']
@@ -165,7 +276,12 @@ export interface components {
      * ErrorCode
      * @enum {string}
      */
-    ErrorCode: 'internal_error' | 'forbidden' | 'no_refresh' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params' | 'ws_invalid_type' | 'ws_chat_message_missing_text'
+    ErrorCode: 'internal_error' | 'forbidden' | 'no_refresh' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params'
+    /**
+     * GameEvent
+     * @enum {string}
+     */
+    GameEvent: 'game.start' | 'game.state.update' | 'player.action'
     /** GamePlayerModel */
     GamePlayerModel: {
       /** Id */
@@ -218,11 +334,60 @@ export interface components {
       /** Message */
       message: string
     }
+    /**
+     * PlayerStatus
+     * @enum {string}
+     */
+    PlayerStatus: 'connected' | 'disconnected'
     /** PublicGameRoomModel */
     PublicGameRoomModel: {
       /** Id */
       id: number
       game_type: components['schemas']['GameType']
+    }
+    /**
+     * RoomEvent
+     * @enum {string}
+     */
+    RoomEvent: 'player.joined' | 'player.left' | 'room.closed' | 'message.sent'
+    /**
+     * RoomStatus
+     * @enum {string}
+     */
+    RoomStatus: 'waiting_for_players' | 'waiting_for_start' | 'waiting_for_player' | 'closed'
+    /** SnapshotBase */
+    SnapshotBase: {
+      /** Room Id */
+      room_id: number
+      /** @default waiting_for_players */
+      status: components['schemas']['RoomStatus']
+      /** Players */
+      players?: components['schemas']['SnapshotPlayer'][]
+      /** Chat Messages */
+      chat_messages?: components['schemas']['SnapshotChatMessage'][]
+    }
+    /** SnapshotChatMessage */
+    SnapshotChatMessage: {
+      /**
+       * Type
+       * @default text
+       * @constant
+       */
+      type: 'text'
+      /** Sender Id */
+      sender_id: string
+      /** Value */
+      value: string
+    }
+    /** SnapshotPlayer */
+    SnapshotPlayer: {
+      /** User Name */
+      user_name: string
+      role: components['schemas']['UserRole']
+      /** Id */
+      id: string
+      /** @default connected */
+      status: components['schemas']['PlayerStatus']
     }
     /**
      * UserRole
@@ -238,6 +403,76 @@ export interface components {
       /** Error Type */
       type: string
     }
+    /** WSMessageBase */
+    WSMessageBase: {
+      type: components['schemas']['WSMessageType']
+    }
+    /** WSMessageError */
+    WSMessageError: {
+      /**
+       * Type
+       * @default error
+       * @constant
+       */
+      type: 'error'
+      code: components['schemas']['ClientMessageErrorCode']
+      /** Message */
+      message: string
+    }
+    /** WSMessageEvent */
+    WSMessageEvent: {
+      /**
+       * Type
+       * @default event
+       * @constant
+       */
+      type: 'event'
+      /** Seq */
+      seq: number
+      event: components['schemas']['BaseEvent']
+    }
+    /** WSMessagePing */
+    WSMessagePing: {
+      /**
+       * Type
+       * @default ping
+       * @constant
+       */
+      type: 'ping'
+      /** Timestamp */
+      timestamp: number
+    }
+    /** WSMessageResponse */
+    WSMessageResponse: {
+      /**
+       * Type
+       * @default response
+       * @constant
+       */
+      type: 'response'
+      /** Event Key */
+      event_key: string
+      /** Success */
+      success: boolean
+      error?: components['schemas']['WSMessageError'] | null
+    }
+    /** WSMessageSnapshot */
+    WSMessageSnapshot: {
+      /**
+       * Type
+       * @default snapshot
+       * @constant
+       */
+      type: 'snapshot'
+      /** Last Seq */
+      last_seq: number
+      data: components['schemas']['SnapshotBase']
+    }
+    /**
+     * WSMessageType
+     * @enum {string}
+     */
+    WSMessageType: 'snapshot' | 'event' | 'ping' | 'response' | 'error'
   }
   responses: never
   parameters: never
@@ -493,6 +728,39 @@ export interface operations {
       }
     }
   }
+  get_game_room_snapshot_game_rooms__game_room_id__snapshot__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        game_room_id: number
+      }
+      cookie?: {
+        authorization?: string | null
+      }
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SnapshotBase']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   refresh_token_game_auth_refresh_post: {
     parameters: {
       query?: never
@@ -520,6 +788,46 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_types_server_types_ws_server_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['WSMessageBase'] | components['schemas']['WSMessageSnapshot'] | components['schemas']['WSMessageEvent'] | components['schemas']['WSMessagePing'] | components['schemas']['WSMessageError'] | components['schemas']['WSMessageResponse'] | null
+        }
+      }
+    }
+  }
+  get_types_client_types_ws_client_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ClientMessageBase'] | components['schemas']['ClientMessagePing'] | components['schemas']['ClientMessageChatMessage'] | null
         }
       }
     }

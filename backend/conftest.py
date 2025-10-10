@@ -7,7 +7,7 @@ from flexmock import flexmock
 from sqlalchemy import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from backend.dependencies import get_event_bus, get_event_store
+from backend.dependencies import get_event_bus, get_event_store, get_snapshot_builder
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.infra.snapshots import SnapshotBuilderBase
@@ -41,13 +41,19 @@ def mock_snapshot_builder():
 
 
 @pytest.fixture(name="client")
-def client(session, mock_event_bus, mock_event_store):
+def client(
+        session,
+        mock_event_bus,
+        mock_event_store,
+        mock_snapshot_builder,
+):
     def get_session_override():
         return session
 
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[get_event_bus] = lambda: mock_event_bus
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
+    app.dependency_overrides[get_snapshot_builder] = lambda: mock_snapshot_builder
 
     with TestClient(app) as c:
         yield c

@@ -1,57 +1,24 @@
-import type { Player } from '../types/player.ts'
-
-type RoomStatus = 'waiting_for_players' | 'waiting_for_start' | 'waiting_for_player' | 'closed'
-
-export interface SnapshotData {
-  room_id: number
-  status: RoomStatus
-  players: Player[]
-  chat_messages: {
-    type: 'text'
-    sender_id: string
-    value: string
-  }[]
-}
+import type { API } from '../types'
 
 export type ServerMessage
-  = | { type: 'snapshot', last_seq: number, data: SnapshotData }
-    | {
-      type: 'event'
-      seq: number
-      event: {
-        type: 'message.sent'
-        room_id: number
-        actor_id: string
-        data: {
-          sender_id: string
-          value: string
-        }
-        seq: number
-      } | {
-        type: 'player.joined'
-        data: Player
-      }
-      | {
-        type: 'player.left'
-        data: {
-          id: string
-        }
-      }
-    }
-    | { type: 'ping', timestamp: number }
+  = | API['WSMessageSnapshot']
+    | API['WSMessageError']
+    | API['WSMessageEvent']
+    | API['WSMessageResponse']
+    | API['WSMessagePing']
 
-export type ClientMessage = {
-  type: 'chat_message'
-  text: string
-} | {
-  type: 'ping'
+export type ClientMessage = API['ClientMessageChatMessage'] | API['ClientMessagePing'] | {
+  type: 'action'
+  action: string
+  request_id: string
+  data: Record<string, unknown>
 }
 
 export type Listener = (msg: ServerMessage) => void
 
 export class RoomEventClient {
   private ws?: WebSocket
-  private url: string
+  private url: URL
   private readonly roomId: number
   private lastSeq: number | null
   private listeners: Set<Listener>
@@ -74,9 +41,7 @@ export class RoomEventClient {
     lastSeq?: number | null
   }) {
     this.listeners = new Set()
-    this.url = `${config.urlBase.replace(/\/$/, '')}/ws/game_rooms/${config.roomId}?${
-      config.lastSeq ? `last_seq=${config.lastSeq}` : ''
-    }`
+    this.url = new URL(`${config.urlBase.replace(/\/$/, '')}/ws/game_rooms/${config.roomId}`)
     this.roomId = config.roomId
     this.lastSeq = config.lastSeq ?? null
   }
@@ -84,7 +49,10 @@ export class RoomEventClient {
   connect() {
     this.ws = new WebSocket(this.url)
     this.ws!.onmessage = (e) => {
+      this.retries = 0
+
       const msg: ServerMessage = JSON.parse(e.data)
+
       if (msg.type === 'snapshot') {
         this.lastSeq = msg.last_seq
         this.listeners.forEach(listener => listener(msg))
@@ -117,7 +85,11 @@ export class RoomEventClient {
     const seq: number = this.lastSeq ?? Number.parseInt(
       localStorage.getItem(`room:${this.roomId}:last_seq`) || '0',
     )
-    this.url = this.url.replace(/(last_seq=\d+)?$/, `last_seq=${seq}`)
+    const url = new URL(this.url.toString())
+    if (seq) {
+      url.searchParams.set('last_seq', String(seq))
+    }
+    this.url = url
     this.connect()
   }
 

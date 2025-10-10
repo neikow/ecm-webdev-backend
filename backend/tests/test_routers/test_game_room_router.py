@@ -2,10 +2,12 @@ import pytest
 import time_machine
 from starlette import status
 
+from backend.infra.snapshots import SnapshotBase, RoomStatus
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import GameRoomService
 from backend.utils.errors import ErrorCode, ApiErrorDetail
+from backend.utils.future import build_future
 from backend.utils.game_utils import get_room_max_users
 from backend.utils.security import create_access_token, AUTHORIZATION_COOKIE, AccessTokenData, REFRESH_COOKIE
 from backend.utils.security import verify_access_token
@@ -462,3 +464,51 @@ async def test_fail_to_find_game_room_by_password_if_not_exists(
         code=ErrorCode.GAME_ROOM_DOES_NOT_EXIST,
         message="Game room with the given password not found"
     ).model_dump()
+
+
+def test_get_game_room_snapshot(
+        client,
+        mock_event_store,
+        mock_snapshot_builder,
+):
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=GamePlayerModel(
+                role=UserRole.player,
+                room_id=1,
+            )
+        )
+    )
+
+    snapshot = SnapshotBase(
+        room_id=1,
+        players=[],
+        status=RoomStatus.WAITING_FOR_PLAYERS,
+        chat_messages=[],
+    )
+
+    mock_snapshot_builder.should_receive('build').once().and_return(
+        build_future(snapshot)
+    )
+
+    response = client.get("/game_rooms/1/snapshot")
+    assert response.status_code == status.HTTP_200_OK
+
+    data = response.json()
+    assert data == snapshot.model_dump(mode="json")
+
+
+def test_get_game_room_snapshot_should_fail_if_not_in_room(
+        client,
+):
+    response = client.get("/game_rooms/1/snapshot")
+    assert response.status_code == status.HTTP_403_FORBIDDEN
+    data = response.json()
+    assert data == ApiErrorDetail(
+        code=ErrorCode.FORBIDDEN,
+        message="You do not have permission to access this game room snapshot",
+        role=None,
+        room_id=None,
+        id=None,
+        should_refresh_token=True,
+    ).model_dump(mode="json")

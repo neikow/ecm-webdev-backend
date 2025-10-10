@@ -1,12 +1,15 @@
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
 
-from backend.dependencies import get_event_store, get_event_bus
+from backend.dependencies import get_event_store, get_event_bus, get_snapshot_builder
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.snapshots import SnapshotBase, SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
 from backend.services.game_room_service import (
@@ -44,10 +47,10 @@ class CreateGameRoomResponse(BaseModel):
 async def create_game_room(
         response: Response,
         game_data: CreateGameRoomData,
-        session: Session = Depends(get_session),
-        player_data: GamePlayerModel | None = Depends(current_player_data),
-        event_store: MemoryEventStore = Depends(get_event_store),
-        event_bus: EventBus = Depends(get_event_bus)
+        session: Annotated[Session, Depends(get_session)],
+        player_data: Annotated[GamePlayerModel | None, Depends(current_player_data)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ) -> CreateGameRoomResponse:
     if player_data is not None:
         raise APIException(
@@ -125,7 +128,9 @@ class GameRoomListResponse(BaseModel):
 
 
 @router.get("/", response_model=GameRoomListResponse)
-async def get_game_rooms(session: Session = Depends(get_session)):
+async def get_game_rooms(
+        session: Annotated[Session, Depends(get_session)],
+):
     game_rooms = GameRoomService.list_all(session)
     return GameRoomListResponse(
         data=[
@@ -147,9 +152,9 @@ class GetGameRoomResponse(BaseModel):
 )
 async def get_game_room(
         game_room_id: int,
+        session: Annotated[Session, Depends(get_session)],
+        current_player: Annotated[GamePlayerModel | None, Depends(current_player_data)],
         password: str | None = None,
-        session: Session = Depends(get_session),
-        current_player: GamePlayerModel | None = Depends(current_player_data)
 ):
     try:
         game_room = GameRoomService.get_or_error(session, game_room_id)
@@ -187,7 +192,8 @@ async def get_game_room(
     response_model=GameRoomModel,
 )
 async def find_game_room_by_password(
-        password: str, session: Session = Depends(get_session)
+        password: str,
+        session: Annotated[Session, Depends(get_session)],
 ):
     if not password:
         raise APIException(
@@ -219,9 +225,9 @@ async def join_game_room(
         password: str,
         user_name: str,
         response: Response,
-        session: Session = Depends(get_session),
-        event_store: MemoryEventStore = Depends(get_event_store),
-        event_bus: EventBus = Depends(get_event_bus)
+        session: Annotated[Session, Depends(get_session)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ) -> GamePlayerModel:
     game_room = GameRoomService.find_by_password(session, password)
     if not game_room:
@@ -279,10 +285,10 @@ class LeaveGameRoomResponse(BaseModel):
 )
 async def leave_game_room(
         response: Response,
-        session: Session = Depends(get_session),
-        player_data: GamePlayerModel | None = Depends(current_player_data),
-        event_store: MemoryEventStore = Depends(get_event_store),
-        event_bus: EventBus = Depends(get_event_bus)
+        session: Annotated[Session, Depends(get_session)],
+        player_data: Annotated[GamePlayerModel | None, Depends(current_player_data)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ) -> LeaveGameRoomResponse:
     if player_data is None:
         raise APIException(
@@ -328,10 +334,10 @@ class EndGameRoomResponse(BaseModel):
 async def end_game_room(
         game_room_id: int,
         response: Response,
-        session: Session = Depends(get_session),
-        player_data: GamePlayerModel | None = Depends(current_player_data),
-        event_store: MemoryEventStore = Depends(get_event_store),
-        event_bus: EventBus = Depends(get_event_bus)
+        session: Annotated[Session, Depends(get_session)],
+        player_data: Annotated[GamePlayerModel | None, Depends(current_player_data)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ) -> EndGameRoomResponse:
     if player_data is None or player_data.role != UserRole.admin or player_data.room_id != game_room_id:
         raise APIException(
@@ -365,3 +371,36 @@ async def end_game_room(
                 message="The requested game room does not exist",
             )
         )
+
+
+@router.get(
+    '/{game_room_id}/snapshot/',
+    response_model=SnapshotBase,
+)
+async def get_game_room_snapshot(
+        game_room_id: int,
+        player_data: Annotated[GamePlayerModel | None, Depends(current_player_data)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        snapshot_builder: Annotated[SnapshotBuilderBase, Depends(get_snapshot_builder)]
+) -> SnapshotBase:
+    if player_data is None or player_data.room_id != game_room_id:
+        raise APIException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=ApiErrorDetail(
+                code=ErrorCode.FORBIDDEN,
+                message="You do not have permission to access this game room snapshot",
+                role=player_data.role if player_data else None,
+                room_id=player_data.room_id if player_data else None,
+                id=player_data.id if player_data else None,
+            )
+        )
+
+    events, last_seq = await event_store.read_from(
+        room_id=game_room_id,
+        limit=10000
+    )
+
+    return await snapshot_builder.build(
+        room_id=game_room_id,
+        events=events
+    )
