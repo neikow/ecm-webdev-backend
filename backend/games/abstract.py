@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from backend.domain.events import BaseEvent
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.models.game_room_model import GameRoomModel
 
 
 class GameExceptionType(str, enum.Enum):
@@ -38,6 +39,17 @@ class Metadata:
 class Game(abc.ABC):
     event_store: MemoryEventStore
     event_bus: EventBus
+    game_room: GameRoomModel
+
+    def __init__(
+            self,
+            game_room: GameRoomModel,
+            event_store: MemoryEventStore,
+            event_bus: EventBus
+    ) -> None:
+        self.game_room = game_room
+        self.event_store = event_store
+        self.event_bus = event_bus
 
     @classmethod
     @abc.abstractmethod

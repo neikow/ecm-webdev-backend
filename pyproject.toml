@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Web development backend course at ECM"
 requires-python = ">=3.12"
 dependencies = [
+    "factory-boy>=3.3.3",
     "fastapi>=0.118.0",
     "flexmock>=0.12.2",
     "httpx>=0.28.1",

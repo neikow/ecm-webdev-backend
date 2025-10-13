@@ -2,6 +2,7 @@ import os
 from contextlib import contextmanager
 
 import pytest
+from factory.alchemy import SQLAlchemyModelFactory
 from fastapi.testclient import TestClient
 from flexmock import flexmock
 from sqlalchemy import StaticPool
@@ -10,6 +11,7 @@ from sqlmodel import Session, SQLModel, create_engine
 from backend.dependencies import get_event_bus, get_event_store, get_snapshot_builder
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBuilderBase
 from backend.server import app
 from backend.utils.db import get_session
@@ -21,8 +23,14 @@ def db_session():
         "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
     )
     SQLModel.metadata.create_all(engine)
+
     with Session(engine) as session:
+        for factory in SQLAlchemyModelFactory.__subclasses__():
+            factory._meta.sqlalchemy_session = session
+
         yield session
+
+        session.rollback()
 
 
 @pytest.fixture()
@@ -38,6 +46,11 @@ def mock_event_store():
 @pytest.fixture()
 def mock_snapshot_builder():
     return flexmock(SnapshotBuilderBase())
+
+
+@pytest.fixture()
+def mock_game_store():
+    return flexmock(MemoryGameStore())
 
 
 @pytest.fixture(name="client")

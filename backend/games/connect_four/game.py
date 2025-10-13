@@ -26,8 +26,6 @@ class ConnectFour(Game):
         tags=["abstract", "board", "strategy", "two-player"]
     )
 
-    game_room: GameRoomModel
-
     _global_state: ConnectFourGlobalState
 
     def __init__(
@@ -36,10 +34,8 @@ class ConnectFour(Game):
             event_store: MemoryEventStore,
             event_bus: EventBus,
     ) -> None:
-        self.game_room = game_room
+        super().__init__(game_room, event_store, event_bus)
         self._global_state = ConnectFourGlobalState()
-        self.event_store = event_store
-        self.event_bus = event_bus
 
     @classmethod
     def get_players_spec(cls) -> PlayerSpec:
