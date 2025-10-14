@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import BaseModel
 
 from backend.domain.events import BaseEvent
+from backend.games.abstract import GameExceptionType
 from backend.infra.snapshots import SnapshotBase
 from backend.schemas.websocket.client import ClientMessageErrorCode
 
@@ -39,7 +40,7 @@ class WSMessagePing(WSMessageBase):
 
 class WSMessageError(BaseModel):
     type: Literal[WSMessageType.ERROR] = WSMessageType.ERROR
-    code: ClientMessageErrorCode
+    code: ClientMessageErrorCode | GameExceptionType
     message: str
 
 

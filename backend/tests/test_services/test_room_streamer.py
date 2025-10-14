@@ -10,6 +10,7 @@ from flexmock import flexmock, Mock
 from backend.domain.events import BaseEvent, RoomEvent, GameEvent
 from backend.events.bus import EventBus
 from backend.factories.game_player_factory import GamePlayerFactory
+from backend.games.abstract import GameException, GameExceptionType
 from backend.games.connect_four.schemas import ConnectFourActionData
 from backend.infra.snapshots import SnapshotBase
 from backend.models.game_player_model import GamePlayerModel
@@ -17,7 +18,7 @@ from backend.models.game_room_model import GameType
 from backend.schemas.websocket.client import ClientMessageType, ClientMessageErrorCode, ClientMessageGameAction
 from backend.services.game_room_service import GameRoomService
 from backend.services.game_service import GameService
-from backend.services.room_streamer import RoomStreamerService
+from backend.services.room_streamer import RoomStreamerService, StreamingError
 from backend.utils.future import build_future
 
 
@@ -461,7 +462,6 @@ async def test_room_streamer_receives_game_start_event_should_forward_it_to_the_
             },
     ) as complete_future:
         flexmock(RoomStreamerService).should_receive("_execute_game_event").once().with_args(
-            ws=ws,
             game_store=mock_game_store,
             current_user=user,
             event=BaseEvent(
@@ -513,7 +513,6 @@ async def test_room_streamer_receives_player_action_event_should_forward_it_to_t
             ).model_dump(mode="json"),
     ) as complete_future:
         flexmock(RoomStreamerService).should_receive("_execute_game_event").once().with_args(
-            ws=ws,
             game_store=mock_game_store,
             current_user=user,
             event=BaseEvent(
@@ -529,5 +528,108 @@ async def test_room_streamer_receives_player_action_event_should_forward_it_to_t
             event_key="test_event_key",
         ).replace_with(
             # `and False` to not send a success response
-            lambda *_, **__: complete_future() and False
+            lambda *_, **__: complete_future()
         )
+
+
+@pytest.mark.asyncio
+async def test_execute_game_event_handles_game_not_found(
+        mock_game_store,
+        mock_event_bus,
+):
+    user: GamePlayerModel = GamePlayerFactory.build(
+        room_id=0
+    )
+    event = BaseEvent(
+        room_id=user.room_id,
+        type=GameEvent.GAME_START,
+        actor_id=user.id,
+        seq=1,
+    )
+
+    with pytest.raises(StreamingError):
+        await RoomStreamerService._execute_game_event(
+            game_store=mock_game_store,
+            current_user=user,
+            event=event,
+            event_key=None,
+        )
+
+
+@pytest.mark.asyncio
+async def test_execute_game_event_handles_game_handle_event_raises(
+        mock_game_store,
+        mock_event_bus,
+        session,
+):
+    game_room = GameRoomService.create(session, password="password", game_type=GameType.connect_four)
+    user: GamePlayerModel = GamePlayerFactory.build(
+        room_id=game_room.id
+    )
+    event = BaseEvent(
+        room_id=user.room_id,
+        type=GameEvent.GAME_START,
+        actor_id=user.id,
+        seq=1,
+    )
+
+    mock_game = flexmock()
+    mock_game.should_receive('handle_event').once().and_raise(
+        GameException(
+            message="Test exception",
+            exception_type=GameExceptionType.forbidden_action
+        )
+    )
+
+    mock_game_store.should_receive('get_game').with_args(
+        key=game_room.id
+    ).once().and_return(
+        mock_game
+    )
+
+    with pytest.raises(StreamingError) as exc_info:
+        await RoomStreamerService._execute_game_event(
+            game_store=mock_game_store,
+            current_user=user,
+            event=event,
+            event_key=None,
+        )
+    assert exc_info.value.error.code == GameExceptionType.forbidden_action
+    assert exc_info.value.error.message == "Test exception"
+
+
+@pytest.mark.asyncio
+async def test_execute_game_event_succeeds(
+        mock_game_store,
+        mock_event_bus,
+        session,
+):
+    game_room = GameRoomService.create(session, password="password", game_type=GameType.connect_four)
+    user: GamePlayerModel = GamePlayerFactory.build(
+        room_id=game_room.id
+    )
+    event = BaseEvent(
+        room_id=user.room_id,
+        type=GameEvent.GAME_START,
+        actor_id=user.id,
+        seq=1,
+    )
+
+    mock_game = flexmock()
+    mock_game.should_receive('handle_event').once().and_return(
+        build_future(None)
+    )
+
+    mock_game_store.should_receive('get_game').with_args(
+        key=game_room.id
+    ).once().and_return(
+        mock_game
+    )
+
+    result = await RoomStreamerService._execute_game_event(
+        game_store=mock_game_store,
+        current_user=user,
+        event=event,
+        event_key=None,
+    )
+    assert result is True

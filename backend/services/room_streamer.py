@@ -6,6 +6,7 @@ from pydantic import ValidationError
 
 from backend.domain.events import RoomEvent, BaseEvent, GameEvent
 from backend.events.bus import EventBus
+from backend.games.abstract import GameException
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBuilderBase
@@ -107,8 +108,7 @@ class RoomStreamerService:
             )
 
     @staticmethod
-    def _execute_game_event(
-            ws: WebSocket,
+    async def _execute_game_event(
             game_store: MemoryGameStore,
             current_user: GamePlayerModel,
             event: BaseEvent,
@@ -122,6 +122,15 @@ class RoomStreamerService:
                     message="No game instance found for this room"
                 ),
                 event_key=event_key,
+            )
+        try:
+            await game.handle_event(event)
+        except GameException as e:
+            raise StreamingError(
+                error=WSMessageError(
+                    code=e.exception_type,
+                    message=e.message,
+                )
             )
 
         return True
@@ -158,8 +167,7 @@ class RoomStreamerService:
                         event_type=GameEvent.GAME_START,
                         actor_id=current_user.id,
                     )
-                    result = RoomStreamerService._execute_game_event(
-                        ws=ws,
+                    result = await RoomStreamerService._execute_game_event(
                         game_store=game_store,
                         current_user=current_user,
                         event=event,
@@ -173,8 +181,7 @@ class RoomStreamerService:
                         actor_id=current_user.id,
                         data=game_action.data.model_dump(mode="json")
                     )
-                    result = RoomStreamerService._execute_game_event(
-                        ws=ws,
+                    result = await RoomStreamerService._execute_game_event(
                         game_store=game_store,
                         current_user=current_user,
                         event=event,
