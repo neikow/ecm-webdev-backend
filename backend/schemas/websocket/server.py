@@ -49,3 +49,6 @@ class WSMessageResponse(WSMessageBase):
     event_key: str
     success: bool
     error: WSMessageError | None = None
+
+
+WSServerMessage = WSMessageBase | WSMessageSnapshot | WSMessageEvent | WSMessagePing | WSMessageError | WSMessageResponse

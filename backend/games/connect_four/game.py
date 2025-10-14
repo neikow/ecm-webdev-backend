@@ -144,3 +144,8 @@ class ConnectFour(Game):
         elif event.type == GameEvent.PLAYER_ACTION:
             await self._handle_player_action(event)
             return
+        else:
+            raise GameException(
+                exception_type=GameExceptionType.unknown_action,
+                message=f"Event type {event.type} is not handled by the game."
+            )

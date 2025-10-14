@@ -7,9 +7,8 @@ from starlette.responses import JSONResponse
 from backend.routers.game_auth_router import router as game_auth_router
 from backend.routers.game_room_router import router as game_room_router
 from backend.routers.websocket import router as websocket_router
-from backend.schemas.websocket.client import ClientMessage
-from backend.schemas.websocket.server import WSMessageBase, WSMessageSnapshot, WSMessageEvent, WSMessagePing, \
-    WSMessageError, WSMessageResponse
+from backend.schemas.websocket.client import WSClientMessage
+from backend.schemas.websocket.server import WSServerMessage
 from backend.utils.db import create_db_and_tables
 from backend.utils.env import get_env
 from backend.utils.errors import APIException
@@ -44,13 +43,7 @@ if get_env("DEV") == "true":
 
     @types_router.get(
         "/ws/server",
-        response_model=WSMessageBase
-                       | WSMessageSnapshot
-                       | WSMessageEvent
-                       | WSMessagePing
-                       | WSMessageError
-                       | WSMessageResponse
-                       | None
+        response_model=WSServerMessage | None
     )
     async def get_types_server():
         return None
@@ -58,7 +51,7 @@ if get_env("DEV") == "true":
 
     @types_router.get(
         "/ws/client",
-        response_model=ClientMessage | None
+        response_model=WSClientMessage | None
     )
     async def get_types_client():
         return None

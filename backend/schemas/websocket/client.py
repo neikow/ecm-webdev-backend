@@ -53,4 +53,4 @@ class ClientMessageGameAction(ClientMessageBase):
     data: ConnectFourActionData
 
 
-ClientMessage = ClientMessagePing | ClientMessageChatMessage | ClientMessageGameStart | ClientMessageGameAction
+WSClientMessage = ClientMessagePing | ClientMessageChatMessage | ClientMessageGameStart | ClientMessageGameAction

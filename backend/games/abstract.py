@@ -9,10 +9,11 @@ from backend.models.game_room_model import GameRoomModel
 
 
 class GameExceptionType(str, enum.Enum):
-    state_incompatibility = "state_incompatibility"
-    wrong_player = "wrong_player"
-    forbidden_action = "forbidden_action"
-    invalid_action_data = "invalid_action_data"
+    state_incompatibility = "game_exception.state_incompatibility"
+    wrong_player = "game_exception.wrong_player"
+    unknown_action = "game_exception.unknown_action"
+    forbidden_action = "game_exception.forbidden_action"
+    invalid_action_data = "game_exception.invalid_action_data"
 
 
 class GameException(Exception):
