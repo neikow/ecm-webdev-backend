@@ -1,5 +1,6 @@
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBuilderBase
 from backend.state.connection_manager import ConnectionManager
 
@@ -7,6 +8,7 @@ _connections = ConnectionManager()
 _store = MemoryEventStore()
 _snapshot_builder = SnapshotBuilderBase()
 _event_bus = EventBus()
+_game_store = MemoryGameStore()
 
 
 def get_connection_manager() -> ConnectionManager:
@@ -23,3 +25,7 @@ def get_snapshot_builder() -> SnapshotBuilderBase:
 
 def get_event_bus() -> EventBus:
     return _event_bus
+
+
+def get_game_store() -> MemoryGameStore:
+    return _game_store

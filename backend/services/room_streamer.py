@@ -4,17 +4,25 @@ from logging import getLogger
 from fastapi import WebSocket
 from pydantic import ValidationError
 
-from backend.domain.events import RoomEvent, BaseEvent
+from backend.domain.events import RoomEvent, BaseEvent, GameEvent
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel
 from backend.schemas.websocket.client import ClientMessageChatMessage, ClientMessageErrorCode, ClientMessageBase, \
-    ClientMessageType
+    ClientMessageType, ClientMessageGameAction
 from backend.schemas.websocket.server import WSMessageSnapshot, WSMessageType, WSMessageEvent, WSMessagePing, \
     WSMessageResponse, WSMessageError
 
 logger = getLogger(__name__)
+
+
+class StreamingError(Exception):
+    def __init__(self, error: WSMessageError, event_key: str | None = None) -> None:
+        self.error = error
+        self.event_key = event_key
+        super().__init__("Streaming error occurred")
 
 
 class RoomStreamerService:
@@ -90,32 +98,41 @@ class RoomStreamerService:
             await event_bus.publish(event=event)
             return True
         except (ValidationError, ClientMessageChatMessage.InvalidMessage):
-            if event_key:
-                await ws.send_json(
-                    WSMessageResponse(
-                        event_key=event_key,
-                        success=False,
-                        error=WSMessageError(
-                            code=ClientMessageErrorCode.INVALID_MESSAGE,
-                            message="Malformed chat message"
-                        )
-                    ).model_dump(mode="json")
-                )
-            else:
-                await ws.send_json(
-                    WSMessageError(
-                        code=ClientMessageErrorCode.INVALID_MESSAGE,
-                        message="Malformed chat message"
-                    ).model_dump(mode="json")
-                )
-            return False
+            raise StreamingError(
+                error=WSMessageError(
+                    code=ClientMessageErrorCode.INVALID_MESSAGE,
+                    message="Malformed chat message"
+                ),
+                event_key=event_key,
+            )
+
+    @staticmethod
+    def _execute_game_event(
+            ws: WebSocket,
+            game_store: MemoryGameStore,
+            current_user: GamePlayerModel,
+            event: BaseEvent,
+            event_key: str | None = None,
+    ) -> bool:
+        game = game_store.get_game(current_user.room_id)
+        if not game:
+            raise StreamingError(
+                error=WSMessageError(
+                    code=ClientMessageErrorCode.GAME_NOT_FOUND,
+                    message="No game instance found for this room"
+                ),
+                event_key=event_key,
+            )
+
+        return True
 
     @staticmethod
     async def receive_client_messages(
             ws: WebSocket,
             current_user: GamePlayerModel,
-            store: MemoryEventStore,
+            event_store: MemoryEventStore,
             event_bus: EventBus,
+            game_store: MemoryGameStore,
     ) -> None:
         while True:
             raw_json = await ws.receive_json()
@@ -130,16 +147,41 @@ class RoomStreamerService:
                     result = await RoomStreamerService._handle_chat_message(
                         ws,
                         current_user,
-                        store,
+                        event_store,
                         event_bus,
                         raw_json,
                         message_base.event_key
                     )
                 elif typ == ClientMessageType.GAME_START:
-                    pass
+                    event = await event_store.append(
+                        room_id=current_user.room_id,
+                        event_type=GameEvent.GAME_START,
+                        actor_id=current_user.id,
+                    )
+                    result = RoomStreamerService._execute_game_event(
+                        ws=ws,
+                        game_store=game_store,
+                        current_user=current_user,
+                        event=event,
+                        event_key=message_base.event_key,
+                    )
                 elif typ == ClientMessageType.ACTION:
-                    pass
+                    game_action = ClientMessageGameAction.model_validate(raw_json)
+                    event = await event_store.append(
+                        room_id=current_user.room_id,
+                        event_type=GameEvent.PLAYER_ACTION,
+                        actor_id=current_user.id,
+                        data=game_action.data.model_dump(mode="json")
+                    )
+                    result = RoomStreamerService._execute_game_event(
+                        ws=ws,
+                        game_store=game_store,
+                        current_user=current_user,
+                        event=event,
+                        event_key=message_base.event_key,
+                    )
 
+                # Acknowledge successful handling if event_key is provided, even if it was already handled
                 if result and message_base.event_key:
                     await ws.send_json(
                         WSMessageResponse(
@@ -153,3 +195,18 @@ class RoomStreamerService:
                         message="Invalid message format"
                     ).model_dump(mode="json")
                 )
+            except StreamingError as err:
+                if err.event_key:
+                    # If the client expects a response, send a WSMessageResponse
+                    await ws.send_json(
+                        WSMessageResponse(
+                            success=False,
+                            event_key=err.event_key,
+                            error=err.error
+                        ).model_dump(mode="json")
+                    )
+                else:
+                    # Otherwise, send a global message that should be displayed in the user's UI with no specific context
+                    await ws.send_json(
+                        err.error.model_dump(mode="json")
+                    )

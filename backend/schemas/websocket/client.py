@@ -9,6 +9,8 @@ from backend.games.connect_four.schemas import ConnectFourActionData
 class ClientMessageErrorCode(str, enum.Enum):
     INVALID_MESSAGE = "invalid_message"
     UNKNOWN_TYPE = "unknown_type"
+    GAME_NOT_FOUND = "game_not_found"
+    MISSING_PERMISSIONS = "missing_permissions"
 
 
 class ClientMessageType(str, enum.Enum):

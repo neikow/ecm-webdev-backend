@@ -8,7 +8,7 @@ from flexmock import flexmock
 from sqlalchemy import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from backend.dependencies import get_event_bus, get_event_store, get_snapshot_builder
+from backend.dependencies import get_event_bus, get_event_store, get_snapshot_builder, get_game_store
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.infra.memory_game_store import MemoryGameStore
@@ -59,6 +59,7 @@ def client(
         mock_event_bus,
         mock_event_store,
         mock_snapshot_builder,
+        mock_game_store,
 ):
     def get_session_override():
         return session
@@ -67,6 +68,7 @@ def client(
     app.dependency_overrides[get_event_bus] = lambda: mock_event_bus
     app.dependency_overrides[get_event_store] = lambda: mock_event_store
     app.dependency_overrides[get_snapshot_builder] = lambda: mock_snapshot_builder
+    app.dependency_overrides[get_game_store] = lambda: mock_game_store
 
     with TestClient(app) as c:
         yield c

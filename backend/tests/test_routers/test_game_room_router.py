@@ -2,6 +2,7 @@ import pytest
 import time_machine
 from starlette import status
 
+from backend.games.abstract import Game
 from backend.infra.snapshots import SnapshotBase, RoomStatus
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameType
@@ -512,3 +513,25 @@ def test_get_game_room_snapshot_should_fail_if_not_in_room(
         id=None,
         should_refresh_token=True,
     ).model_dump(mode="json")
+
+
+def test_create_game_room_should_create_a_game_instance_and_add_it_to_store(
+        session,
+        client,
+        mock_game_store,
+):
+    mock_game_store.should_receive("add_game").with_args(
+        int,
+        Game
+    ).once()
+
+    response = client.post(
+        "/game_rooms/",
+        json={
+            "game_type": GameType.connect_four,
+            "password": "secretpassword",
+            "user_name": "admin"
+        },
+    )
+
+    assert response.status_code == status.HTTP_201_CREATED

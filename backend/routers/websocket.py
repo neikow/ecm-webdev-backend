@@ -6,9 +6,11 @@ from fastapi import WebSocket, APIRouter
 from fastapi.params import Depends
 from starlette.websockets import WebSocketDisconnect
 
-from backend.dependencies import get_connection_manager, get_event_store, get_snapshot_builder, get_event_bus
+from backend.dependencies import get_connection_manager, get_event_store, get_snapshot_builder, get_event_bus, \
+    get_game_store
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel
 from backend.services.room_streamer import RoomStreamerService
@@ -27,7 +29,8 @@ async def game_room_events(
         room_id: int,
         current_user: Annotated[GamePlayerModel | None, Depends(current_player_data)],
         connections: Annotated[ConnectionManager, Depends(get_connection_manager)],
-        store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
+        game_store: Annotated[MemoryGameStore, Depends(get_game_store)],
         snapshot_builder: Annotated[SnapshotBuilderBase, Depends(get_snapshot_builder)],
         event_bus: Annotated[EventBus, Depends(get_event_bus)],
 ):
@@ -46,7 +49,7 @@ async def game_room_events(
         await RoomStreamerService.send_current_room_state(
             ws=websocket,
             room_id=room_id,
-            store=store,
+            store=event_store,
             snapshot_builder=snapshot_builder
         )
 
@@ -61,7 +64,8 @@ async def game_room_events(
             RoomStreamerService.receive_client_messages(
                 ws=websocket,
                 current_user=current_user,
-                store=store,
+                event_store=event_store,
+                game_store=game_store,
                 event_bus=event_bus,
             )
         )

@@ -7,11 +7,16 @@ import pytest
 import time_machine
 from flexmock import flexmock, Mock
 
-from backend.domain.events import BaseEvent, RoomEvent
+from backend.domain.events import BaseEvent, RoomEvent, GameEvent
 from backend.events.bus import EventBus
+from backend.factories.game_player_factory import GamePlayerFactory
+from backend.games.connect_four.schemas import ConnectFourActionData
 from backend.infra.snapshots import SnapshotBase
 from backend.models.game_player_model import GamePlayerModel
-from backend.schemas.websocket.client import ClientMessageType, ClientMessageErrorCode
+from backend.models.game_room_model import GameType
+from backend.schemas.websocket.client import ClientMessageType, ClientMessageErrorCode, ClientMessageGameAction
+from backend.services.game_room_service import GameRoomService
+from backend.services.game_service import GameService
 from backend.services.room_streamer import RoomStreamerService
 from backend.utils.future import build_future
 
@@ -133,8 +138,9 @@ async def test_send_ws_message_event() -> None:
 @contextlib.asynccontextmanager
 async def perform_receive_client_messages_test(
         ws: Mock,
-        mock_event_store: Mock,
-        mock_event_bus: Mock,
+        mock_event_store,
+        mock_event_bus,
+        mock_game_store,
         current_user: GamePlayerModel,
         message: dict,
 ) -> AsyncGenerator[Callable[[], Coroutine[Any, Any, Future[None]]], Any]:
@@ -163,10 +169,11 @@ async def perform_receive_client_messages_test(
 
     receive_task = asyncio.create_task(
         RoomStreamerService.receive_client_messages(
-            ws,  # type: ignore[arg-type]
-            current_user,
-            mock_event_store,  # type: ignore[arg-type]
-            mock_event_bus,  # type: ignore[arg-type]
+            ws=ws,
+            current_user=current_user,
+            event_store=mock_event_store,
+            game_store=mock_game_store,
+            event_bus=mock_event_bus,
         )
     )
 
@@ -187,7 +194,8 @@ async def perform_receive_client_messages_test(
 @time_machine.travel("2025-01-01 12:00:00", tick=False)
 async def test_room_streamer_should_receive_client_ping(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store,
 ):
     ws = flexmock()
     current_user = GamePlayerModel(
@@ -198,11 +206,12 @@ async def test_room_streamer_should_receive_client_ping(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 "type": ClientMessageType.PING
             },
     ) as complete_future:
@@ -217,7 +226,8 @@ async def test_room_streamer_should_receive_client_ping(
 @pytest.mark.asyncio
 async def test_room_streamer_sends_an_error_on_missing_type(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store
 ):
     ws = flexmock()
     current_user = GamePlayerModel(
@@ -228,11 +238,12 @@ async def test_room_streamer_sends_an_error_on_missing_type(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 # No "type" field
             },
     ) as complete_future:
@@ -249,7 +260,8 @@ async def test_room_streamer_sends_an_error_on_missing_type(
 @time_machine.travel("2025-01-01 12:00:00", tick=False)
 async def test_room_streamer_publishes_a_message_event_to_bus(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store,
 ):
     ws = flexmock()
     message_value = "Hello, World!"
@@ -261,11 +273,12 @@ async def test_room_streamer_publishes_a_message_event_to_bus(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 "type": ClientMessageType.CHAT_MESSAGE.value,
                 "text": message_value
             },
@@ -289,7 +302,8 @@ async def test_room_streamer_publishes_a_message_event_to_bus(
 @pytest.mark.asyncio
 async def test_room_streamer_sends_an_error_on_missing_chat_text(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store,
 ):
     ws = flexmock()
     current_user = GamePlayerModel(
@@ -300,11 +314,12 @@ async def test_room_streamer_sends_an_error_on_missing_chat_text(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 "type": ClientMessageType.CHAT_MESSAGE.value,
                 # No "text" field
             },
@@ -322,7 +337,8 @@ async def test_room_streamer_sends_an_error_on_missing_chat_text(
 @time_machine.travel("2025-01-01 12:00:00", tick=False)
 async def test_room_streamer_sends_response_on_event_key(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store,
 ):
     ws = flexmock()
     event_key = "test_event_key"
@@ -335,11 +351,12 @@ async def test_room_streamer_sends_response_on_event_key(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 "type": ClientMessageType.CHAT_MESSAGE.value,
                 "text": message_value,
                 "event_key": event_key
@@ -372,7 +389,8 @@ async def test_room_streamer_sends_response_on_event_key(
 @pytest.mark.asyncio
 async def test_room_streamer_sends_error_response_on_malformed_chat_message(
         mock_event_store,
-        mock_event_bus
+        mock_event_bus,
+        mock_game_store,
 ):
     ws = flexmock()
     event_key = "test_event_key"
@@ -384,11 +402,12 @@ async def test_room_streamer_sends_error_response_on_malformed_chat_message(
     )
 
     async with perform_receive_client_messages_test(
-            ws,
-            mock_event_store,
-            mock_event_bus,
-            current_user,
-            {
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=current_user,
+            message={
                 "type": ClientMessageType.CHAT_MESSAGE.value,
                 "text": '',
                 "event_key": event_key
@@ -405,4 +424,110 @@ async def test_room_streamer_sends_error_response_on_malformed_chat_message(
             }
         }).once().replace_with(
             lambda _: complete_future()
+        )
+
+
+@pytest.mark.asyncio
+@time_machine.travel("2025-01-01 12:00:00", tick=False)
+async def test_room_streamer_receives_game_start_event_should_forward_it_to_the_game(
+        session,
+        mock_event_store,
+        mock_event_bus,
+        mock_game_store,
+):
+    ws = flexmock()
+    game_room = GameRoomService.create(session, password="password", game_type=GameType.connect_four)
+    user: GamePlayerModel = GamePlayerFactory.build(
+        room_id=0
+    )
+
+    GameService.create_game(
+        game_room=game_room,
+        game_type=game_room.game_type,
+        event_bus=mock_event_bus,
+        game_store=mock_game_store,
+        event_store=mock_event_store,
+    )
+
+    async with perform_receive_client_messages_test(
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=user,
+            message={
+                "type": ClientMessageType.GAME_START.value,
+                "room_id": game_room.id,
+            },
+    ) as complete_future:
+        flexmock(RoomStreamerService).should_receive("_execute_game_event").once().with_args(
+            ws=ws,
+            game_store=mock_game_store,
+            current_user=user,
+            event=BaseEvent(
+                room_id=user.room_id,
+                type=GameEvent.GAME_START,
+                actor_id=user.id,
+                seq=1,
+            ),
+            event_key=None,
+        ).replace_with(
+            lambda *_, **__: complete_future()
+        )
+
+
+@pytest.mark.asyncio
+@time_machine.travel("2025-01-01 12:00:00", tick=False)
+async def test_room_streamer_receives_player_action_event_should_forward_it_to_the_game(
+        session,
+        mock_event_store,
+        mock_event_bus,
+        mock_game_store,
+):
+    ws = flexmock()
+    game_room = GameRoomService.create(session, password="password", game_type=GameType.connect_four)
+    user: GamePlayerModel = GamePlayerFactory.build(
+        room_id=0
+    )
+
+    GameService.create_game(
+        game_room=game_room,
+        game_type=game_room.game_type,
+        event_bus=mock_event_bus,
+        game_store=mock_game_store,
+        event_store=mock_event_store,
+    )
+
+    async with perform_receive_client_messages_test(
+            ws=ws,
+            mock_event_store=mock_event_store,
+            mock_event_bus=mock_event_bus,
+            mock_game_store=mock_game_store,
+            current_user=user,
+            message=ClientMessageGameAction(
+                data=ConnectFourActionData(
+                    player=1,
+                    column=0,
+                ),
+                event_key="test_event_key",
+            ).model_dump(mode="json"),
+    ) as complete_future:
+        flexmock(RoomStreamerService).should_receive("_execute_game_event").once().with_args(
+            ws=ws,
+            game_store=mock_game_store,
+            current_user=user,
+            event=BaseEvent(
+                room_id=user.room_id,
+                type=GameEvent.PLAYER_ACTION,
+                actor_id=user.id,
+                seq=1,
+                data={
+                    "player": 1,
+                    "column": 0,
+                },
+            ),
+            event_key="test_event_key",
+        ).replace_with(
+            # `and False` to not send a success response
+            lambda *_, **__: complete_future() and False
         )

@@ -50,6 +50,7 @@ class SnapshotBuilderBase:
         raise NotImplementedError
 
     async def build(self, room_id: int, events: list[BaseEvent]) -> SnapshotBase:
+        # A nice optimization would be to build snapshot incrementally and cache it
         logger.info(f"Building snapshot for room_id={room_id} with {len(events)} events")
         state = SnapshotBase(
             room_id=room_id,

@@ -6,15 +6,17 @@ from sqlmodel import Session
 from starlette import status
 from starlette.responses import Response
 
-from backend.dependencies import get_event_store, get_event_bus, get_snapshot_builder
+from backend.dependencies import get_event_store, get_event_bus, get_snapshot_builder, get_game_store
 from backend.events.bus import EventBus
 from backend.infra.memory_event_store import MemoryEventStore
+from backend.infra.memory_game_store import MemoryGameStore
 from backend.infra.snapshots import SnapshotBase, SnapshotBuilderBase
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameRoomModel, GameType
 from backend.services.game_room_service import (
     GameRoomService,
 )
+from backend.services.game_service import GameService
 from backend.utils.db import get_session
 from backend.utils.errors import ErrorCode, APIException, ApiErrorDetail
 from backend.utils.security import current_player_data, add_access_cookie, create_access_token, \
@@ -51,6 +53,7 @@ async def create_game_room(
         player_data: Annotated[GamePlayerModel | None, Depends(current_player_data)],
         event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
         event_bus: Annotated[EventBus, Depends(get_event_bus)],
+        game_store: Annotated[MemoryGameStore, Depends(get_game_store)],
 ) -> CreateGameRoomResponse:
     if player_data is not None:
         raise APIException(
@@ -75,6 +78,14 @@ async def create_game_room(
                     message="Failed to create game room",
                 ),
             )
+
+        GameService.create_game(
+            game_type=game_data.game_type,
+            game_room=game_room,
+            event_store=event_store,
+            event_bus=event_bus,
+            game_store=game_store,
+        )
 
         player = await GameRoomService.add_user(
             session,
