@@ -58,6 +58,7 @@ async def game_room_events(
             RoomStreamerService.stream_room_events(
                 ws=websocket,
                 room_id=room_id,
+                user_id=current_user.id,
                 event_bus=event_bus,
             )
         )

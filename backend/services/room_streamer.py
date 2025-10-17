@@ -49,9 +49,10 @@ class RoomStreamerService:
     async def stream_room_events(
             ws: WebSocket,
             room_id: int,
+            user_id: str,
             event_bus: EventBus
     ) -> None:
-        async with event_bus.subscribe(room_id) as queue:
+        async with event_bus.subscribe(room_id, user_id) as queue:
             while True:
                 e = await queue.get()
                 await RoomStreamerService.send_ws_message_event(ws, e)

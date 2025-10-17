@@ -5,11 +5,12 @@ import pytest
 
 from backend.domain.events import BaseEvent
 from backend.events.bus import EventBus
+from backend.events.subscribers import QueueSubscribers
 
 
 def test_event_bus_should_be_initialized_with_empty_subscribers_and_a_lock():
     event_bus = EventBus()
-    assert event_bus._subscribers == {}
+    assert isinstance(event_bus._subscribers, QueueSubscribers)
     assert isinstance(event_bus._lock, asyncio.Lock)
 
 
@@ -25,8 +26,8 @@ async def test_event_bus_should_put_event_on_subscriber_queue():
         type="event_type",
         data={},
     )
-    event_bus._subscribers[event.room_id] = {queue}
-    event_bus._subscribers[event.room_id + 1] = {untouched_queue}
+    event_bus._subscribers.add(event.room_id, "user1", queue)
+    event_bus._subscribers.add(event.room_id + 1, "user2", untouched_queue)
 
     await event_bus.publish(event)
 
@@ -39,10 +40,10 @@ async def test_event_bus_subscribe_to_room_events():
     room_id = 1
     event_bus = EventBus()
 
-    async with event_bus.subscribe(room_id=room_id) as q:
+    async with event_bus.subscribe(room_id=room_id, user_id="user") as q:
         subs = event_bus._subscribers
-        assert room_id in subs
-        assert q in subs[room_id]
+        assert q in subs.get_by_room_id(room_id)
+        assert q == subs.get_by_user_id("user")
 
 
 @pytest.mark.asyncio
@@ -50,13 +51,13 @@ async def test_event_bus_subscribe_cleanup():
     event_bus = EventBus()
     room_id = 1
 
-    async with event_bus.subscribe(room_id) as q:
+    async with event_bus.subscribe(room_id, 'user') as q:
         subs = event_bus._subscribers
-        assert room_id in subs
-        assert q in subs[room_id]
+        assert q in subs.get_by_room_id(room_id)
+        assert q == subs.get_by_user_id('user')
 
     subs = event_bus._subscribers
-    assert room_id not in subs or q not in subs.get(room_id, set())
+    assert room_id not in subs._subscribers_by_room_id or q not in subs.get_by_room_id(room_id)
 
 
 @pytest.mark.asyncio
@@ -64,13 +65,13 @@ async def test_multiple_subscribers_and_room_key_cleanup():
     event_bus = EventBus()
     room_id = 42
 
-    async with event_bus.subscribe(room_id) as q2:
-        async with event_bus.subscribe(room_id) as q1:
+    async with event_bus.subscribe(room_id, 'user2') as q2:
+        async with event_bus.subscribe(room_id, 'user1') as q1:
             subs = event_bus._subscribers
-            assert subs[room_id] == {q1, q2}
+            assert subs.get_by_room_id(room_id) == {q1, q2}
 
         subs = event_bus._subscribers
-        assert room_id in subs and subs[room_id] == {q2}
+        assert room_id in subs._subscribers_by_room_id and subs.get_by_room_id(room_id) == {q2}
 
         evt = BaseEvent(
             type="event",
@@ -84,4 +85,4 @@ async def test_multiple_subscribers_and_room_key_cleanup():
         assert await asyncio.wait_for(q2.get(), 0.2) is evt
 
     subs = event_bus._subscribers
-    assert room_id not in subs
+    assert room_id not in subs._subscribers_by_room_id

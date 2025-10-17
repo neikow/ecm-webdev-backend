@@ -38,14 +38,15 @@ async def test_websocket_connection_succeeds_with_auth(client):
 
 def test_websocket_connection_restores_history(client):
     room_id = 1
+    player = GamePlayerModel(
+        id="test_id",
+        user_name="test_user",
+        room_id=room_id,
+        role=UserRole.admin,
+    )
     client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
         AccessTokenData(
-            player=GamePlayerModel(
-                id="test_id",
-                user_name="test_user",
-                room_id=room_id,
-                role=UserRole.admin,
-            )
+            player=player
         )
     )
 
@@ -60,6 +61,7 @@ def test_websocket_connection_restores_history(client):
     flexmock(RoomStreamerService).should_receive("stream_room_events").with_args(
         ws=WebSocket,
         room_id=room_id,
+        user_id=player.id,
         event_bus=EventBus
     ).and_return(
         build_future(None)

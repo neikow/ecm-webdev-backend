@@ -66,6 +66,7 @@ async def test_stream_room_events_should_send_ws_message_events_when_they_arrive
     mock_event_bus = EventBus()
     ws = flexmock()
     room_id = 0
+    user_id = "user"
     event = BaseEvent(
         room_id=room_id,
         data={},
@@ -77,6 +78,7 @@ async def test_stream_room_events_should_send_ws_message_events_when_they_arrive
         RoomStreamerService.stream_room_events(
             ws,  # type: ignore[arg-type]
             room_id,
+            user_id,
             mock_event_bus
         )
     )
