@@ -48,6 +48,7 @@ class GameRoomService:
         session.add(game_room)
         session.commit()
         session.refresh(game_room)
+        session.expunge(game_room)
         return game_room
 
     @staticmethod

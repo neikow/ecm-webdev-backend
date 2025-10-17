@@ -229,7 +229,7 @@ export interface components {
      * ClientMessageErrorCode
      * @enum {string}
      */
-    ClientMessageErrorCode: 'invalid_message' | 'unknown_type'
+    ClientMessageErrorCode: 'invalid_message' | 'unknown_type' | 'game_not_found' | 'missing_permissions'
     /** ClientMessageGameAction */
     ClientMessageGameAction: {
       /**
@@ -301,6 +301,11 @@ export interface components {
      * @enum {string}
      */
     GameEvent: 'game.start' | 'game.state.update' | 'player.action'
+    /**
+     * GameExceptionType
+     * @enum {string}
+     */
+    GameExceptionType: 'game_exception.state_incompatibility' | 'game_exception.wrong_player' | 'game_exception.unknown_action' | 'game_exception.forbidden_action' | 'game_exception.invalid_action_data'
     /** GamePlayerModel */
     GamePlayerModel: {
       /** Id */
@@ -373,7 +378,7 @@ export interface components {
      * RoomStatus
      * @enum {string}
      */
-    RoomStatus: 'waiting_for_players' | 'waiting_for_start' | 'waiting_for_player' | 'closed'
+    RoomStatus: 'waiting_for_players' | 'waiting_for_start' | 'waiting_for_player' | 'in_progress' | 'closed'
     /** SnapshotBase */
     SnapshotBase: {
       /** Room Id */
@@ -384,6 +389,10 @@ export interface components {
       players?: components['schemas']['SnapshotPlayer'][]
       /** Chat Messages */
       chat_messages?: components['schemas']['SnapshotChatMessage'][]
+      /** Game State */
+      game_state?: {
+        [key: string]: unknown
+      } | null
     }
     /** SnapshotChatMessage */
     SnapshotChatMessage: {
@@ -434,7 +443,8 @@ export interface components {
        * @constant
        */
       type: 'error'
-      code: components['schemas']['ClientMessageErrorCode']
+      /** Code */
+      code: components['schemas']['ClientMessageErrorCode'] | components['schemas']['GameExceptionType']
       /** Message */
       message: string
     }

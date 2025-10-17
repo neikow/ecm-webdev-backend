@@ -130,7 +130,8 @@ class RoomStreamerService:
                 error=WSMessageError(
                     code=e.exception_type,
                     message=e.message,
-                )
+                ),
+                event_key=event_key,
             )
 
         return True
@@ -217,3 +218,5 @@ class RoomStreamerService:
                     await ws.send_json(
                         err.error.model_dump(mode="json")
                     )
+            except Exception as e:
+                logger.exception("Unexpected error while processing client message", e)

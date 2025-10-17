@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 from typing import Annotated
 
@@ -80,6 +81,8 @@ async def game_room_events(
 
     except WebSocketDisconnect:
         pass
+    except Exception as e:
+        logger.error(json.dumps(e))
     finally:
         for t in (send_task, receive_task):
             if t and not t.done():

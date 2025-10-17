@@ -67,17 +67,6 @@ async def create_game_room(
         )
     try:
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
-        # Once again I still don't understand why this is necessary
-        game_room_copy = game_room.model_copy()
-
-        if not game_room.id:
-            raise APIException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=ApiErrorDetail(
-                    code=ErrorCode.INTERNAL_ERROR,
-                    message="Failed to create game room",
-                ),
-            )
 
         GameService.create_game(
             game_type=game_data.game_type,
@@ -115,7 +104,7 @@ async def create_game_room(
 
         response.status_code = status.HTTP_201_CREATED
         return CreateGameRoomResponse(
-            game_room=game_room_copy,
+            game_room=game_room,
             player=player,
         )
 

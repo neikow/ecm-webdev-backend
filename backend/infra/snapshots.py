@@ -4,7 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
-from backend.domain.events import BaseEvent, RoomEvent
+from backend.domain.events import BaseEvent, RoomEvent, GameEvent
 from backend.models.game_player_model import UserRole
 
 
@@ -32,6 +32,8 @@ class RoomStatus(str, enum.Enum):
 
     WAITING_FOR_PLAYER = "waiting_for_player"
 
+    IN_PROGRESS = "in_progress"
+
     CLOSED = "closed"
 
 
@@ -40,15 +42,13 @@ class SnapshotBase(BaseModel):
     status: RoomStatus = RoomStatus.WAITING_FOR_PLAYERS
     players: list[SnapshotPlayer] = Field(default_factory=lambda: [])
     chat_messages: list[SnapshotChatMessage] = Field(default_factory=lambda: [])
+    game_state: dict | None = None
 
 
 logger = getLogger(__name__)
 
 
 class SnapshotBuilderBase:
-    def handle_external_event(self, event: BaseEvent, state: SnapshotBase) -> SnapshotBase:
-        raise NotImplementedError
-
     async def build(self, room_id: int, events: list[BaseEvent]) -> SnapshotBase:
         # A nice optimization would be to build snapshot incrementally and cache it
         logger.info(f"Building snapshot for room_id={room_id} with {len(events)} events")
@@ -79,11 +79,12 @@ class SnapshotBuilderBase:
                         value=e.data["value"],
                     )
                 )
+            elif e.type == GameEvent.GAME_START:
+                state.status = RoomStatus.IN_PROGRESS
+            elif e.type == GameEvent.GAME_STATE_UPDATE:
+                state.game_state = e.data
             else:
-                state = self.handle_external_event(
-                    e,
-                    state,
-                )
+                logger.info("Unhandled event type in snapshot builder", e.type)
 
         state.players = players
 

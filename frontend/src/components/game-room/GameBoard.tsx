@@ -1,21 +1,12 @@
 import type { API } from '../../types'
 import { useMutation } from '@tanstack/react-query'
+import { useCurrentGameState } from '../../hooks/useCurrentGameState.tsx'
 import { useGameRoom } from '../../providers/GameRoomProvider.tsx'
 import { useCurrentPlayer } from '../../stores/useCurrentPlayer.tsx'
 import { cn } from '../../utils/classes.ts'
-
-interface GameState {
-  can_start_game: boolean
-}
-
-function useGameState(): GameState {
-  return {
-    can_start_game: true,
-  }
-}
+import { Board } from '../games/connect-four/Board.tsx'
 
 export function GameBoard() {
-  const { can_start_game } = useGameState()
   const { client } = useGameRoom()
   const { currentPlayer } = useCurrentPlayer()
 
@@ -31,10 +22,12 @@ export function GameBoard() {
     },
   })
 
+  const currentGameState = useCurrentGameState()
+
   return (
     <div className="w-full h-full card bg-base-200 shadow-md p-4 flex items-center justify-center">
       {
-        can_start_game && (
+        !currentGameState && (
           currentPlayer?.role === 'admin'
             ? isPending
               ? <div className="loading"></div>
@@ -65,6 +58,7 @@ export function GameBoard() {
         )
       }
 
+      {currentGameState && <Board grid={currentGameState.grid} />}
     </div>
   )
 }

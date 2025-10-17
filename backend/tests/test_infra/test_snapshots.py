@@ -1,7 +1,6 @@
 import pytest
-from flexmock import flexmock
 
-from backend.domain.events import BaseEvent, RoomEvent
+from backend.domain.events import BaseEvent, RoomEvent, GameEvent
 from backend.infra.snapshots import SnapshotBuilderBase, SnapshotBase, SnapshotPlayer, RoomStatus, SnapshotChatMessage, \
     PlayerStatus
 from backend.models.game_player_model import UserRole
@@ -135,32 +134,35 @@ async def test_snapshot_captures_message_feed(snapshot_builder):
 
 
 @pytest.mark.asyncio
-async def test_snapshot_builder_calls_handle_external_event_on_unknown_event_type(snapshot_builder):
+async def test_snapshot_with_a_game_start_event_should_have_in_progress_status(
+        mock_snapshot_builder
+):
     room_id = 0
-    event = BaseEvent(
-        room_id=room_id,
-        type="-unknown_event_type",
-        seq=1,
-    )
+    snapshot = await mock_snapshot_builder.build(room_id, [
+        BaseEvent(
+            room_id=room_id,
+            type=GameEvent.GAME_START,
+            seq=1,
+        )
+    ])
 
-    flexmock(snapshot_builder).should_receive("handle_external_event").with_args(
-        event, SnapshotBase
-    ).and_return(
-        SnapshotBase(room_id=room_id)
-    ).once()
-
-    await snapshot_builder.build(room_id, [event])
+    assert snapshot.status == RoomStatus.IN_PROGRESS
 
 
 @pytest.mark.asyncio
-async def test_building_a_snapshot_with_unknown_event_raises_an_error_on_base_snapshot_builder(
+async def test_snapshot_with_a_game_state_update_event_should_set_the_data_as_current_room_game_data(
         mock_snapshot_builder
 ):
-    with pytest.raises(NotImplementedError):
-        await mock_snapshot_builder.build(0, [
-            BaseEvent(
-                room_id=0,
-                type="-unknown_event_type",
-                seq=1,
-            )
-        ])
+    room_id = 0
+    snapshot = await mock_snapshot_builder.build(room_id, [
+        BaseEvent(
+            room_id=room_id,
+            type=GameEvent.GAME_STATE_UPDATE,
+            seq=1,
+            data={
+                "some": "data"
+            }
+        )
+    ])
+
+    assert snapshot.game_state == {"some": "data"}
