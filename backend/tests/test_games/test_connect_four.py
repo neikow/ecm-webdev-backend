@@ -3,10 +3,10 @@ import time_machine
 from flexmock import flexmock
 
 from backend.domain.events import BaseEvent, GameEvent
-from backend.games.abstract import GameException, GameExceptionType
+from backend.games.abstract import GameException, GameExceptionType, GameStatus, GamePlayer
 from backend.games.connect_four import game as connect_four
 from backend.games.connect_four.game import ConnectFour
-from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData
+from backend.games.connect_four.schemas import ConnectFourActionData
 from backend.models.game_room_model import GameRoomModel
 from backend.utils.future import build_future
 
@@ -50,9 +50,9 @@ def test_connect_four_initializes_with_defaults(game_room, mock_event_store, moc
         event_store=mock_event_store,
         event_bus=mock_event_bus,
     )
-    assert game._global_state.grid == [[0 for _ in range(7)] for _ in range(6)]
-    assert game._global_state.current_player == 0
-    assert game._global_state.state == ConnectFourState.not_started
+    assert game.state.grid == [[0 for _ in range(7)] for _ in range(6)]
+    assert game.state.current_player == 0
+    assert game.state.status == GameStatus.not_started
 
 
 @pytest.mark.asyncio
@@ -64,20 +64,25 @@ async def test_connect_four_handle_game_start_event(
         empty_grid,
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
-    assert game._global_state.state == ConnectFourState.not_started
+    assert game.state.status == GameStatus.not_started
     current_player = 1
 
     flexmock(connect_four).should_receive("randint").and_return(current_player)
+
+    await game.add_player("player1")
+    await game.add_player("player2")
+
     assert mock_event_bus.should_receive("publish").with_args(
         event=BaseEvent(
             type=GameEvent.GAME_STATE_UPDATE,
-            seq=1,
+            seq=2,
             actor_id="player1",
             room_id=game_room.id,
             data={
+                'can_start': True,
+                'status': 'ongoing',
                 'grid': empty_grid,
                 'current_player': 1,
-                'state': 'ongoing',
                 'winning_positions': None
             },
         )
@@ -92,7 +97,7 @@ async def test_connect_four_handle_game_start_event(
         ),
     )
 
-    assert game._global_state.state == ConnectFourState.ongoing
+    assert game.state.status == GameStatus.ongoing
 
 
 @pytest.mark.asyncio
@@ -102,6 +107,10 @@ async def test_connect_four_handle_game_start_event_twice_raises(
         mock_event_bus,
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    await game.add_player('player1')
+    await game.add_player('player2')
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -110,7 +119,7 @@ async def test_connect_four_handle_game_start_event_twice_raises(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
+    assert game.state.status == GameStatus.ongoing
 
     with pytest.raises(GameException) as exc_info:
         await game.handle_event(
@@ -135,6 +144,10 @@ async def test_connect_four_handle_player_action(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    await game.add_player('player1')
+    await game.add_player('player2')
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -143,16 +156,18 @@ async def test_connect_four_handle_player_action(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 1
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 1
 
     assert mock_event_bus.should_receive("publish").with_args(
         event=BaseEvent(
             type=GameEvent.GAME_STATE_UPDATE,
-            seq=2,
+            seq=3,
             actor_id="player1",
             room_id=game_room.id,
             data={
+                'can_start': True,
+                'status': 'ongoing',
                 'grid': [
                     [0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0],
@@ -162,7 +177,6 @@ async def test_connect_four_handle_player_action(
                     [0, 0, 0, 1, 0, 0, 0],
                 ],
                 'current_player': 2,
-                'state': 'ongoing',
                 'winning_positions': None
             },
         )
@@ -183,8 +197,8 @@ async def test_connect_four_handle_player_action(
 
     expected_grid = [row[:] for row in empty_grid]
     expected_grid[5][3] = 1
-    assert game._global_state.grid == expected_grid
-    assert game._global_state.current_player == 2
+    assert game.state.grid == expected_grid
+    assert game.state.current_player == 2
 
 
 def test_connect_four_get_column_height():
@@ -213,6 +227,10 @@ async def test_connect_four_handle_player_action_out_of_turn(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    await game.add_player('player1')
+    await game.add_player('player2')
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -221,8 +239,8 @@ async def test_connect_four_handle_player_action_out_of_turn(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 1
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 1
 
     with pytest.raises(GameException) as exc_info:
         await game.handle_event(
@@ -249,6 +267,10 @@ async def test_connect_four_handle_player_action_column_full(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    await game.add_player('player1')
+    await game.add_player('player2')
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -257,10 +279,10 @@ async def test_connect_four_handle_player_action_column_full(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 1
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 1
 
-    game._global_state.grid = [
+    game.state.grid = [
         [0, 0, 0, 1, 0, 0, 0],
         [0, 0, 0, 2, 0, 0, 0],
         [0, 0, 0, 1, 0, 0, 0],
@@ -293,7 +315,7 @@ async def test_connect_four_handle_player_action_wrong_state(
         mock_event_bus,
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
-    assert game._global_state.state == ConnectFourState.not_started
+    assert game.state.status == GameStatus.not_started
 
     with pytest.raises(GameException) as exc_info:
         await game.handle_event(
@@ -320,6 +342,10 @@ async def test_connect_four_handle_player_action_invalid_column(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    await game.add_player("player1")
+    await game.add_player("player2")
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -328,8 +354,8 @@ async def test_connect_four_handle_player_action_invalid_column(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 1
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 1
 
     with pytest.raises(ValueError):
         await game.handle_event(
@@ -415,6 +441,9 @@ async def test_connect_four_handle_player_action_winning_move(
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
 
+    await game.add_player("player1")
+    await game.add_player("player2")
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -423,10 +452,10 @@ async def test_connect_four_handle_player_action_winning_move(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 1
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 1
 
-    game._global_state.grid = [
+    game.state.grid = [
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
         [0, 0, 0, 0, 0, 0, 0],
@@ -438,10 +467,12 @@ async def test_connect_four_handle_player_action_winning_move(
     assert mock_event_bus.should_receive("publish").with_args(
         event=BaseEvent(
             type=GameEvent.GAME_STATE_UPDATE,
-            seq=2,
+            seq=3,
             actor_id="player1",
             room_id=game_room.id,
             data={
+                'can_start': True,
+                'status': 'win',
                 'grid': [
                     [0, 0, 0, 0, 0, 0, 0],
                     [0, 0, 0, 0, 0, 0, 0],
@@ -451,7 +482,6 @@ async def test_connect_four_handle_player_action_winning_move(
                     [0, 0, 0, 1, 2, 0, 0],
                 ],
                 'current_player': 1,
-                'state': 'win',
                 'winning_positions': [[3, 3], [2, 3], [1, 3], [0, 3]]
             },
         )
@@ -481,6 +511,9 @@ async def test_connect_four_handle_player_action_draw_move(
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(2)
 
+    await game.add_player("player1")
+    await game.add_player("player2")
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -489,10 +522,10 @@ async def test_connect_four_handle_player_action_draw_move(
             room_id=game_room.id,
         ),
     )
-    assert game._global_state.state == ConnectFourState.ongoing
-    assert game._global_state.current_player == 2
+    assert game.state.status == GameStatus.ongoing
+    assert game.state.current_player == 2
 
-    game._global_state.grid = [
+    game.state.grid = [
         [1, 2, 1, 0, 1, 2, 1],
         [1, 2, 1, 1, 1, 2, 1],
         [2, 1, 2, 1, 2, 1, 2],
@@ -504,10 +537,12 @@ async def test_connect_four_handle_player_action_draw_move(
     assert mock_event_bus.should_receive("publish").with_args(
         event=BaseEvent(
             type=GameEvent.GAME_STATE_UPDATE,
-            seq=2,
+            seq=3,
             actor_id="player2",
             room_id=game_room.id,
             data={
+                'can_start': True,
+                'status': 'draw',
                 'grid': [
                     [1, 2, 1, 2, 1, 2, 1],
                     [1, 2, 1, 1, 1, 2, 1],
@@ -517,7 +552,6 @@ async def test_connect_four_handle_player_action_draw_move(
                     [2, 1, 2, 2, 2, 1, 2],
                 ],
                 'current_player': 2,
-                'state': 'draw',
                 'winning_positions': None
             },
         )
@@ -535,3 +569,73 @@ async def test_connect_four_handle_player_action_draw_move(
             ).model_dump(),
         )
     )
+
+
+@pytest.mark.asyncio
+async def test_cannot_start_game_if_not_enough_players(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    await game.add_player("player1")
+
+    with pytest.raises(GameException) as exc_info:
+        await game.handle_event(
+            BaseEvent(
+                type=GameEvent.GAME_START,
+                seq=0,
+                actor_id="player1",
+                room_id=game_room.id,
+            ),
+        )
+
+    assert exc_info.value.exception_type == GameExceptionType.wrong_players_number
+
+
+@pytest.mark.asyncio
+async def test_cannot_start_game_if_too_many_players(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    await game.add_player("player1")
+    await game.add_player("player2")
+    # Manually add a third player to simulate too many players
+    game.players[2] = GamePlayer(id=2, user_id='player3', status='joined')
+
+    with pytest.raises(GameException) as exc_info:
+        await game.handle_event(
+            BaseEvent(
+                type=GameEvent.GAME_START,
+                seq=0,
+                actor_id="player1",
+                room_id=game_room.id,
+            ),
+        )
+
+    assert exc_info.value.exception_type == GameExceptionType.wrong_players_number
+
+
+@pytest.mark.asyncio
+async def test_handle_unknown_event_type_raises(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    with pytest.raises(GameException) as exc_info:
+        await game.handle_event(
+            BaseEvent(
+                type="unknown_event_type",
+                seq=0,
+                actor_id="player1",
+                room_id=game_room.id,
+            ),
+        )
+
+    assert exc_info.value.exception_type == GameExceptionType.unknown_action

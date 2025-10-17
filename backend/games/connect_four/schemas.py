@@ -1,22 +1,14 @@
-import enum
 from typing import Annotated
 
 from pydantic import BaseModel, Field
 
+from backend.games.abstract import GameState
 from backend.games.connect_four.consts import P_1, P_2, COLUMNS, EMPTY, ROWS
 
 
-class ConnectFourState(str, enum.Enum):
-    not_started = "not_started"
-    ongoing = "ongoing"
-    draw = "draw"
-    win = "win"
-
-
-class ConnectFourGlobalState(BaseModel):
+class ConnectFourState(GameState):
     grid: list[list[int]] = Field(default_factory=lambda: [[EMPTY for _ in range(COLUMNS)] for _ in range(ROWS)])
     current_player: int = 0
-    state: ConnectFourState = ConnectFourState.not_started
     winning_positions: list[tuple[int, int]] | None = None
 
 
