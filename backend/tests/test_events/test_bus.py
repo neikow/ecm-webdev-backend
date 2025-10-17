@@ -86,3 +86,41 @@ async def test_multiple_subscribers_and_room_key_cleanup():
 
     subs = event_bus._subscribers
     assert room_id not in subs._subscribers_by_room_id
+
+
+@pytest.mark.asyncio
+async def test_bus_publish_to_a_single_target():
+    event_bus = EventBus()
+    room_id = 42
+    user1 = "user1"
+    user2 = "user2"
+
+    async with event_bus.subscribe(room_id, user2) as q2:
+        async with event_bus.subscribe(room_id, user1) as q1:
+            await event_bus.publish(
+                BaseEvent(
+                    room_id=room_id,
+                    type="event",
+                    seq=1,
+                    data={},
+                    target_id=user1
+                )
+            )
+
+            assert q1.qsize() == 1
+            assert q2.qsize() == 0
+
+
+@pytest.mark.asyncio
+async def test_bus_publish_to_a_single_non_existant_target():
+    event_bus = EventBus()
+    with pytest.raises(ValueError):
+        await event_bus.publish(
+            BaseEvent(
+                room_id=0,
+                type="event",
+                seq=1,
+                data={},
+                target_id="-unknown-user"
+            )
+        )

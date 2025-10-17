@@ -16,8 +16,14 @@ class EventBus:
 
     async def publish(self, event: BaseEvent) -> None:
         async with self._lock:
-            for q in list(self._subscribers.get_by_room_id(event.room_id)):
+            if event.target_id:
+                q = self._subscribers.get_by_user_id(event.target_id)
+                if q is None:
+                    raise ValueError
                 q.put_nowait(event)
+            else:
+                for q in list(self._subscribers.get_by_room_id(event.room_id)):
+                    q.put_nowait(event)
 
     @asynccontextmanager
     async def subscribe(self, room_id: int, user_id: str) -> AsyncIterator[asyncio.Queue[BaseEvent]]:

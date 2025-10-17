@@ -27,3 +27,4 @@ class BaseEvent(BaseModel):
     ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     actor_id: str | None = None
     data: dict = Field(default_factory=lambda: {})
+    target_id: str | None = None
