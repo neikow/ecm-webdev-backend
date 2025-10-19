@@ -40,28 +40,33 @@ export function Board(props: BoardProps) {
   const colsCount = props.grid[0]!.length
   const rowsCount = props.grid.length
 
+  const isCurrentPlayerTurn = gameState && playerState?.player === gameState.current_player
+
   return (
     <div>
-      {gameState && (gameState.current_player === 1
-        ? (
-            <span
-              className="badge badge-primary mb-2"
-            >
-              {playerState?.player === gameState.current_player ? 'Your turn' : 'Red\'s Turn'}
-            </span>
-          )
-        : (
-            <span className="badge badge-secondary mb-2">
-              {playerState?.player === gameState.current_player ? 'Your turn' : 'Yellow\'s Turn'}
-            </span>
-          )
+      {gameState && (
+        <span
+          className={cn('badge mb-2 select-none', {
+            'badge-primary': isCurrentPlayerTurn,
+            'badge-secondary': !isCurrentPlayerTurn,
+          })}
+        >
+          {isCurrentPlayerTurn ? 'Your turn' : 'Opponent\'s Turn'}
+        </span>
       )}
 
-      <div className="grid grid-cols-7 gap-2 bg-base-100 p-2 rounded-lg border">
+      <div
+        className={cn('grid grid-cols-7 gap-2 bg-base-100 p-2 rounded-lg border transition-colors', {
+          'border-green-400': isCurrentPlayerTurn && gameState?.status === 'win',
+          'border-red-400': !isCurrentPlayerTurn && gameState?.status === 'win',
+          'border-yellow-400': gameState?.status === 'draw',
+          'border-primary': isCurrentPlayerTurn && gameState?.status === 'ongoing',
+        })}
+      >
         {Array.from({ length: colsCount }).map((_, colIndex) => (
           <div
             key={colIndex}
-            className={cn('flex flex-col gap-2', {
+            className={cn('flex flex-col gap-2 transition-opacity', {
               'opacity-70': playerState?.player !== gameState?.current_player,
               'cursor-pointer': playerState?.player === gameState?.current_player,
             })}
@@ -90,6 +95,19 @@ export function Board(props: BoardProps) {
             })}
           </div>
         ))}
+
+        {gameState?.status === 'win' && (
+          <div
+            className={cn('absolute top-1/2 left-1/2 -translate-1/2 text-center px-6 py-3 bg-base-300 border rounded-lg shadow-lg select-none', {
+              'border-green-400': isCurrentPlayerTurn,
+              'border-red-400': !isCurrentPlayerTurn,
+            })}
+          >
+            <h2 className="text-2xl font-bold">
+              {isCurrentPlayerTurn ? 'You won !' : 'You lost !'}
+            </h2>
+          </div>
+        )}
       </div>
     </div>
   )

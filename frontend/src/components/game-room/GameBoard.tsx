@@ -62,17 +62,7 @@ export function GameBoard() {
           : null
       }
 
-      {gameState?.status === 'win' && (
-        <div className="text-center">
-          <h2 className="text-2xl font-bold mb-4">
-            Player
-            {gameState.current_player}
-            Wins!
-          </h2>
-        </div>
-      )}
-
-      {gameState?.status === 'ongoing' && <Board grid={gameState.grid} />}
+      {gameState && gameState?.status !== 'not_started' && <Board grid={gameState.grid} />}
     </div>
   )
 }

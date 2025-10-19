@@ -5,3 +5,20 @@
 @theme {
     --font-sans: "Space Grotesk", sans-serif;
 }
+
+@layer base {
+    @keyframes fade-in-down {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .fade-in-down {
+        animation: fade-in-down 300ms ease-out forwards;
+    }
+}
