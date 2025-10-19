@@ -68,7 +68,7 @@ async def create_game_room(
     try:
         game_room = GameRoomService.create(session, game_data.game_type, game_data.password)
 
-        GameService.create_game(
+        game = GameService.create_game(
             game_type=game_data.game_type,
             game_room=game_room,
             event_store=event_store,
@@ -84,6 +84,9 @@ async def create_game_room(
             event_store,
             event_bus
         )
+
+        await game.add_player(player.id)
+
         add_access_cookie(
             response,
             create_access_token(
@@ -228,6 +231,7 @@ async def join_game_room(
         session: Annotated[Session, Depends(get_session)],
         event_store: Annotated[MemoryEventStore, Depends(get_event_store)],
         event_bus: Annotated[EventBus, Depends(get_event_bus)],
+        game_store: Annotated[MemoryGameStore, Depends(get_game_store)],
 ) -> GamePlayerModel:
     game_room = GameRoomService.find_by_password(session, password)
     if not game_room:
@@ -248,6 +252,22 @@ async def join_game_room(
             event_store=event_store,
             event_bus=event_bus
         )
+
+        game = GameService.get_game(
+            game_room_id=game_room_id,
+            game_store=game_store,
+        )
+        if not game:
+            raise APIException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=ApiErrorDetail(
+                    code=ErrorCode.GAME_DOES_NOT_EXIST,
+                    message="Game instance not found for the specified game room",
+                ),
+            )
+
+        await game.add_player(user.id)
+
         add_access_cookie(
             response,
             create_access_token(

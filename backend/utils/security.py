@@ -75,7 +75,7 @@ def create_refresh_token(data: RefreshTokenData, expires_delta: timedelta | None
 def verify_access_token(token: str) -> AccessTokenData:
     try:
         payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
-        return AccessTokenData(**payload)
+        return AccessTokenData.model_validate(payload)
     except jwt.ExpiredSignatureError:
         raise TokenExpiredError
     except ValidationError:

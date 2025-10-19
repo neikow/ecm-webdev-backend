@@ -22,43 +22,57 @@ export function GameBoard() {
     },
   })
 
-  const currentGameState = useCurrentGameState()
+  const { gameState } = useCurrentGameState()
 
   return (
     <div className="w-full h-full card bg-base-200 shadow-md p-4 flex items-center justify-center">
       {
-        !currentGameState && (
-          currentPlayer?.role === 'admin'
-            ? isPending
-              ? <div className="loading"></div>
-              : (
-                  <>
-                    <button
-                      className={cn('btn btn-lg mb-2', {
-                        'btn-primary': !error,
-                        'btn-error': !!error,
-                      })}
-                      onClick={() => startGame()}
-                    >
-                      Start Game
-                    </button>
-                    {error && (
-                      <p className="text-error">
-                        <span>
-                          Failed to start the game:&nbsp;
-                        </span>
-                        <span>
-                          {(error as Error).message}
-                        </span>
-                      </p>
-                    )}
-                  </>
-                )
-            : <span className="text-sm text-base-content/70">Waiting for the host to start the game...</span>
-        )
+        gameState?.status === 'not_started'
+          ? gameState?.can_start
+            ? (
+                currentPlayer?.role === 'admin'
+                  ? isPending
+                    ? <div className="loading">Loading</div>
+                    : (
+                        <>
+                          <button
+                            className={cn('btn btn-lg mb-2', {
+                              'btn-primary': !error,
+                              'btn-error': !!error,
+                            })}
+                            onClick={() => startGame()}
+                          >
+                            Start Game
+                          </button>
+                          {error && (
+                            <p className="text-error">
+                              <span>
+                                Failed to start the game:&nbsp;
+                              </span>
+                              <span>
+                                {(error as Error).message}
+                              </span>
+                            </p>
+                          )}
+                        </>
+                      )
+                  : <span className="text-sm text-base-content/70">Waiting for the host to start the game...</span>
+              )
+            : <div>Waiting for players to join...</div>
+          : null
       }
 
-      {currentGameState && <Board grid={currentGameState.grid} />}
+      {gameState?.status === 'win' && (
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">
+            Player
+            {gameState.current_player}
+            Wins!
+          </h2>
+        </div>
+      )}
+
+      {gameState?.status === 'ongoing' && <Board grid={gameState.grid} />}
     </div>
   )
 }

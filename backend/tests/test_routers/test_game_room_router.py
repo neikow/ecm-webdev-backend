@@ -7,6 +7,7 @@ from backend.infra.snapshots import SnapshotBase, RoomStatus
 from backend.models.game_player_model import GamePlayerModel, UserRole
 from backend.models.game_room_model import GameType
 from backend.services.game_room_service import GameRoomService
+from backend.services.game_service import GameService
 from backend.utils.errors import ErrorCode, ApiErrorDetail
 from backend.utils.future import build_future
 from backend.utils.game_utils import get_room_max_users
@@ -213,11 +214,24 @@ def test_fail_to_create_game_room_if_the_user_is_in_game_room(session, client):
     ).model_dump(mode="json")
 
 
-def test_join_game_room(session, client):
+def test_join_game_room(
+        session,
+        client,
+        mock_game_store,
+        mock_event_store,
+        mock_event_bus,
+):
     game_room_password = "secret"
     user_name = "admin"
     game_room = GameRoomService.create(
         session, game_type=GameType.connect_four, password=game_room_password
+    )
+    GameService.create_game(
+        game_room=game_room,
+        game_type=game_room.game_type,
+        game_store=mock_game_store,
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
     )
     assert client.cookies.get(AUTHORIZATION_COOKIE) is None
     response = client.post(

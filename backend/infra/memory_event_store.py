@@ -22,7 +22,8 @@ class MemoryEventStore:
             room_id: int,
             event_type: str,
             data: dict | None = None,
-            actor_id: str | None = None
+            actor_id: str | None = None,
+            target_id: str | None = None,
     ) -> BaseEvent:
         lock = self._locks[room_id]
         async with lock:
@@ -32,6 +33,7 @@ class MemoryEventStore:
                 room_id=room_id,
                 type=event_type,
                 actor_id=actor_id,
+                target_id=target_id,
                 data=data or {}
             )
             logger.info(f"Appending event: {event.model_dump()}")

@@ -18,6 +18,8 @@ class ErrorCode(str, enum.Enum):
     GAME_ROOM_DOES_NOT_EXIST = "game_room_does_not_exist"
     MISSING_QUERY_PARAMS = "missing_query_params"
 
+    GAME_DOES_NOT_EXIST = "game_does_not_exist"
+
 
 class ApiErrorDetail(BaseModel):
     model_config = ConfigDict(

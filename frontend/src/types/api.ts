@@ -211,6 +211,8 @@ export interface components {
       data?: {
         [key: string]: unknown
       }
+      /** Target Id */
+      target_id?: string | null
     }
     /** ClientMessageChatMessage */
     ClientMessageChatMessage: {
@@ -300,12 +302,12 @@ export interface components {
      * GameEvent
      * @enum {string}
      */
-    GameEvent: 'game.start' | 'game.state.update' | 'player.action'
+    GameEvent: 'game.start' | 'game.state.update' | 'game.init' | 'player.action'
     /**
      * GameExceptionType
      * @enum {string}
      */
-    GameExceptionType: 'game_exception.state_incompatibility' | 'game_exception.wrong_player' | 'game_exception.unknown_action' | 'game_exception.forbidden_action' | 'game_exception.invalid_action_data'
+    GameExceptionType: 'game_exception.state_incompatibility' | 'game_exception.wrong_player' | 'game_exception.unknown_action' | 'game_exception.forbidden_action' | 'game_exception.invalid_action_data' | 'game_exception.wrong_players_number'
     /** GamePlayerModel */
     GamePlayerModel: {
       /** Id */

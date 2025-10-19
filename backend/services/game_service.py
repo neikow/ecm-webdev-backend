@@ -24,3 +24,10 @@ class GameService:
         game_store.add_game(game_room.id, game)
 
         return game
+
+    @staticmethod
+    def get_game(
+            game_room_id: int,
+            game_store: MemoryGameStore,
+    ) -> Game | None:
+        return game_store.get_game(game_room_id)

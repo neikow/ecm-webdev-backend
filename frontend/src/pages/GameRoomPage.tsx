@@ -56,8 +56,8 @@ export function GameRoomPage() {
     <GameRoomProvider roomId={roomId}>
       <div className="min-h-screen flex flex-col bg-base-300">
         <Header data={data} navigate={navigate} />
-        <div className="grid grid-cols-7 items-center h-[calc(100vh-96px)]">
-          <div className="col-span-1 h-full"></div>
+        <div className="grid grid-cols-6 lg:grid-cols-7 items-center h-[calc(100vh-96px)]">
+          <div className="hidden lg:block col-span-1 h-full"></div>
           <div className="col-span-4 h-full pr-4">
             <GameBoard />
           </div>

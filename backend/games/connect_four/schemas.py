@@ -12,6 +12,13 @@ class ConnectFourState(GameState):
     winning_positions: list[tuple[int, int]] | None = None
 
 
+class ConnectFourInitData(BaseModel):
+    player: Annotated[
+        int,
+        Field(ge=P_1, le=P_2)
+    ]
+
+
 class ConnectFourActionData(BaseModel):
     player: Annotated[
         int,

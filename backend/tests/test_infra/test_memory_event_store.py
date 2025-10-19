@@ -97,3 +97,21 @@ async def test_get_last_seq_for_memory_event_store():
 
     await event_store.append(room_id, "event")
     assert await event_store.last_seq(room_id) == 2
+
+
+@pytest.mark.asyncio
+async def test_append_event_with_target_id():
+    event_store = MemoryEventStore()
+    room_id = 1
+
+    event = await event_store.append(
+        room_id=room_id,
+        event_type="event",
+        target_id="target_user"
+    )
+
+    assert event.target_id == "target_user"
+    assert len(event_store._events[room_id]) == 1
+    assert event_store._events[room_id] == [
+        event
+    ]

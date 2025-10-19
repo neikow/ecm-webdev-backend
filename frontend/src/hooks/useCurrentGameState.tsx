@@ -4,7 +4,7 @@ import { useCurrentGameStateStore } from '../stores/useCurrentGameStateStore.tsx
 
 export function useCurrentGameState() {
   const { client } = useGameRoom()
-  const { gameState, setGameState, resetGameState } = useCurrentGameStateStore()
+  const { gameState, playerState, setGameState, setPlayerState, reset } = useCurrentGameStateStore()
 
   useEffect(() => {
     return client.on((msg) => {
@@ -14,11 +14,14 @@ export function useCurrentGameState() {
       else if (msg.type === 'event' && msg.event.type === 'game.state.update') {
         setGameState(msg.event.data as any)
       }
+      else if (msg.type === 'event' && msg.event.type === 'game.init') {
+        setPlayerState(msg.event.data as any)
+      }
       else if (msg.type === 'event' && msg.event.type === 'room.closed') {
-        resetGameState()
+        reset()
       }
     })
   }, [])
 
-  return gameState
+  return { gameState, playerState }
 }

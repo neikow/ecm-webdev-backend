@@ -68,6 +68,10 @@ async def test_connect_four_handle_game_start_event(
     current_player = 1
 
     flexmock(connect_four).should_receive("randint").and_return(current_player)
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
 
     await game.add_player("player1")
     await game.add_player("player2")
@@ -111,6 +115,11 @@ async def test_connect_four_handle_game_start_event_twice_raises(
     await game.add_player('player1')
     await game.add_player('player2')
 
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
+
     await game.handle_event(
         BaseEvent(
             type=GameEvent.GAME_START,
@@ -144,6 +153,14 @@ async def test_connect_four_handle_player_action(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(
+        actor_id="player1"
+    ).and_return(
+        build_future(None)
+    ).once()
 
     await game.add_player('player1')
     await game.add_player('player2')
@@ -228,6 +245,11 @@ async def test_connect_four_handle_player_action_out_of_turn(
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
 
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
+
     await game.add_player('player1')
     await game.add_player('player2')
 
@@ -267,6 +289,11 @@ async def test_connect_four_handle_player_action_column_full(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
 
     await game.add_player('player1')
     await game.add_player('player2')
@@ -342,6 +369,10 @@ async def test_connect_four_handle_player_action_invalid_column(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
 
     await game.add_player("player1")
     await game.add_player("player2")
@@ -440,6 +471,10 @@ async def test_connect_four_handle_player_action_winning_move(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(1)
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
 
     await game.add_player("player1")
     await game.add_player("player2")
@@ -510,6 +545,11 @@ async def test_connect_four_handle_player_action_draw_move(
 ):
     game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
     flexmock(connect_four).should_receive("randint").and_return(2)
+
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
 
     await game.add_player("player1")
     await game.add_player("player2")
@@ -639,3 +679,67 @@ async def test_handle_unknown_event_type_raises(
         )
 
     assert exc_info.value.exception_type == GameExceptionType.unknown_action
+
+
+@pytest.mark.asyncio
+async def test_send_game_started_event_should_dispatch_one_event_per_player(
+        mock_event_store,
+        mock_event_bus
+):
+    game_room = GameRoomModel(
+        id=0,
+        game_type="connect_four",
+    )
+    game = ConnectFour(
+        game_room=game_room,
+        event_store=mock_event_store,
+        event_bus=mock_event_bus
+    )
+    await game.add_player('player1')
+    await game.add_player('player2')
+
+    mock_event_store.should_receive("append").with_args(
+        room_id=game_room.id,
+        event_type=GameEvent.GAME_INIT,
+        actor_id='admin',
+        target_id='player1',
+        data={
+            "player": 1
+        },
+    ).and_return(
+        build_future(
+            BaseEvent(
+                type=GameEvent.GAME_INIT,
+                seq=1,
+                actor_id='admin',
+                room_id=game_room.id,
+                target_id='player1',
+                data={"player": 1},
+            )
+        )
+    ).once()
+
+    mock_event_store.should_receive("append").with_args(
+        room_id=game_room.id,
+        event_type=GameEvent.GAME_INIT,
+        actor_id='admin',
+        target_id='player2',
+        data={
+            "player": 2
+        },
+    ).and_return(
+        build_future(
+            BaseEvent(
+                type=GameEvent.GAME_INIT,
+                seq=2,
+                actor_id='admin',
+                room_id=game_room.id,
+                target_id='player2',
+                data={"player": 2},
+            )
+        )
+    ).once()
+
+    mock_event_bus.should_receive("publish").replace_with(lambda *_, **__: build_future(None)).twice()
+
+    await game.send_game_started_events(actor_id='admin')

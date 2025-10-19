@@ -1,10 +1,11 @@
+import asyncio
 from random import randint
 
 from backend.domain.events import BaseEvent, GameEvent
 from backend.events.bus import EventBus
 from backend.games.abstract import Game, Metadata, PlayerSpec, GameException, GameExceptionType, GameStatus
-from backend.games.connect_four.consts import P_1, P_2, ROWS, COLUMNS, EMPTY
-from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData
+from backend.games.connect_four.consts import ROWS, COLUMNS, EMPTY, P_2, P_1
+from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData, ConnectFourInitData
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
 
@@ -62,6 +63,33 @@ class ConnectFour(Game[ConnectFourState]):
         self.state.status = GameStatus.ongoing
         self.state.current_player = randint(P_1, P_2)
         await self.broadcast_game_state_update(actor_id=event.actor_id)
+        await self.send_game_started_events(actor_id=event.actor_id)
+
+    async def send_game_started_events(self, actor_id: str) -> None:
+        await asyncio.gather(*[
+            self._send_game_started_event(
+                actor_id=actor_id,
+                target_id=player.user_id,
+            ) for player in self.current_players
+        ])
+
+    async def _send_game_started_event(
+            self,
+            actor_id: str,
+            target_id: str
+    ) -> None:
+        event = await self.event_store.append(
+            room_id=self.game_room.id,
+            event_type=GameEvent.GAME_INIT,
+            actor_id=actor_id,
+            target_id=target_id,
+            data=ConnectFourInitData(
+                player=next(
+                    (index + 1) for index, player in enumerate(self.current_players) if player.user_id == target_id
+                ),
+            ).model_dump()
+        )
+        await self.event_bus.publish(event=event)
 
     @staticmethod
     def _check_winner(grid: list[list[int]], player: int) -> tuple[bool, list[tuple[int, int]]]:
