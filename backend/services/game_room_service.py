@@ -130,6 +130,7 @@ class GameRoomService:
     ) -> bool:
         statement = select(GamePlayerModel).where(GamePlayerModel.id == player_id)
         game_player = session.exec(statement).first()
+        result = False
         if game_player:
             user_id = game_player.id
             session.delete(game_player)
@@ -144,6 +145,21 @@ class GameRoomService:
             )
 
             await event_bus.publish(e)
+
+            current_users_count = session.scalar(
+                select(
+                    func.count()
+                ).where(GamePlayerModel.room_id == game_player.room_id)
+            ) or 0
+
+            if current_users_count == 0:
+                await GameRoomService.end_game_room(
+                    session=session,
+                    game_room_id=game_player.room_id,
+                    event_store=event_store,
+                    event_bus=event_bus,
+                )
+
             return True
 
         return False

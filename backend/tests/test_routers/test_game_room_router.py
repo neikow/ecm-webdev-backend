@@ -549,3 +549,35 @@ def test_create_game_room_should_create_a_game_instance_and_add_it_to_store(
     )
 
     assert response.status_code == status.HTTP_201_CREATED
+
+
+@pytest.mark.asyncio
+async def test_game_room_should_deactivate_room_after_all_players_leave(
+        session,
+        client,
+        mock_event_store,
+        mock_event_bus,
+):
+    game_room = GameRoomService.create(
+        session, game_type=GameType.connect_four, password="secret"
+    )
+
+    player = await GameRoomService.add_user(
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name="player",
+        event_store=mock_event_store,
+        event_bus=mock_event_bus,
+    )
+    client.cookies[AUTHORIZATION_COOKIE] = create_access_token(
+        AccessTokenData(
+            player=player
+        )
+    )
+
+    response = client.post("/game_rooms/leave")
+    assert response.status_code == status.HTTP_200_OK
+
+    refreshed_game_room = GameRoomService.get_or_error(session, game_room.id)
+    assert refreshed_game_room.is_active is False

@@ -307,3 +307,34 @@ def test_check_password_for_non_existing_room_should_raise_error(session):
             game_room_id=-1,
             password="any"
         )
+
+
+@pytest.mark.asyncio
+async def test_mark_game_room_as_inactive_when_every_player_left(
+        session,
+        mock_event_bus,
+        mock_event_store,
+):
+    game_room = GameRoomService.create(session, GameType.connect_four, "securepassword")
+    assert game_room.is_active == True
+    session.add(game_room)
+    session.commit()
+
+    user = await GameRoomService.add_user(
+        session=session,
+        game_room_id=game_room.id,
+        role=UserRole.player,
+        user_name="player",
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
+    )
+
+    await GameRoomService.remove_user(
+        session=session,
+        player_id=user.id,
+        event_bus=mock_event_bus,
+        event_store=mock_event_store,
+    )
+
+    updated_game_room = GameRoomService.get_or_error(session, game_room.id)
+    assert updated_game_room.is_active is False
