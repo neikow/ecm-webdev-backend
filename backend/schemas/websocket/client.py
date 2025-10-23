@@ -18,6 +18,7 @@ class ClientMessageType(str, enum.Enum):
     CHAT_MESSAGE = "chat_message"
     ACTION = "action"
     GAME_START = "game_start"
+    GAME_RESET = "game_reset"
 
 
 class ClientMessageException(Exception):
@@ -48,9 +49,13 @@ class ClientMessageGameStart(ClientMessageBase):
     type: Literal[ClientMessageType.GAME_START] = ClientMessageType.GAME_START
 
 
+class ClientMessageGameReset(ClientMessageBase):
+    type: Literal[ClientMessageType.GAME_RESET] = ClientMessageType.GAME_RESET
+
+
 class ClientMessageGameAction(ClientMessageBase):
     type: Literal[ClientMessageType.ACTION] = ClientMessageType.ACTION
     data: ConnectFourActionData
 
 
-WSClientMessage = ClientMessagePing | ClientMessageChatMessage | ClientMessageGameStart | ClientMessageGameAction
+WSClientMessage = ClientMessagePing | ClientMessageChatMessage | ClientMessageGameStart | ClientMessageGameReset | ClientMessageGameAction

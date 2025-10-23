@@ -38,6 +38,7 @@ async def test_send_current_room_state(
     mock_snapshot_builder.should_receive('build').with_args(
         room_id,
         events,
+        user_id="user"
     ).once().and_return(
         build_future(
             snapshot
@@ -56,8 +57,9 @@ async def test_send_current_room_state(
     await RoomStreamerService.send_current_room_state(
         ws,  # type: ignore[arg-type]
         room_id,
-        mock_event_store,
-        mock_snapshot_builder
+        user_id="user",
+        store=mock_event_store,
+        snapshot_builder=mock_snapshot_builder
     )
 
 

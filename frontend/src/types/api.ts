@@ -244,6 +244,17 @@ export interface components {
       event_key?: string | null
       data: components['schemas']['ConnectFourActionData']
     }
+    /** ClientMessageGameReset */
+    ClientMessageGameReset: {
+      /**
+       * Type
+       * @default game_reset
+       * @constant
+       */
+      type: 'game_reset'
+      /** Event Key */
+      event_key?: string | null
+    }
     /** ClientMessageGameStart */
     ClientMessageGameStart: {
       /**
@@ -273,6 +284,11 @@ export interface components {
       /** Column */
       column: number
     }
+    /** ConnectFourPlayerData */
+    ConnectFourPlayerData: {
+      /** Player */
+      player: number
+    }
     /** CreateGameRoomData */
     CreateGameRoomData: {
       game_type: components['schemas']['GameType']
@@ -297,12 +313,12 @@ export interface components {
      * ErrorCode
      * @enum {string}
      */
-    ErrorCode: 'internal_error' | 'forbidden' | 'no_refresh' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params'
+    ErrorCode: 'internal_error' | 'forbidden' | 'no_refresh' | 'already_in_game_room' | 'not_in_game_room' | 'password_used' | 'password_invalid' | 'game_room_full' | 'game_room_does_not_exist' | 'missing_query_params' | 'game_does_not_exist'
     /**
      * GameEvent
      * @enum {string}
      */
-    GameEvent: 'game.start' | 'game.state.update' | 'game.init' | 'player.action'
+    GameEvent: 'game.start' | 'game.init' | 'game.reset' | 'game.state.update' | 'player.action'
     /**
      * GameExceptionType
      * @enum {string}
@@ -391,6 +407,7 @@ export interface components {
       players?: components['schemas']['SnapshotPlayer'][]
       /** Chat Messages */
       chat_messages?: components['schemas']['SnapshotChatMessage'][]
+      player_data?: components['schemas']['ConnectFourPlayerData'] | null
       /** Game State */
       game_state?: {
         [key: string]: unknown
@@ -858,7 +875,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['ClientMessagePing'] | components['schemas']['ClientMessageChatMessage'] | components['schemas']['ClientMessageGameStart'] | components['schemas']['ClientMessageGameAction'] | null
+          'application/json': components['schemas']['ClientMessagePing'] | components['schemas']['ClientMessageChatMessage'] | components['schemas']['ClientMessageGameStart'] | components['schemas']['ClientMessageGameReset'] | components['schemas']['ClientMessageGameAction'] | null
         }
       }
     }

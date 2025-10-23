@@ -422,5 +422,6 @@ async def get_game_room_snapshot(
 
     return await snapshot_builder.build(
         room_id=game_room_id,
-        events=events
+        events=events,
+        user_id=player_data.id,
     )

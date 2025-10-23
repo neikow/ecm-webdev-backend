@@ -44,16 +44,35 @@ export function Board(props: BoardProps) {
 
   return (
     <div>
-      {gameState && (
-        <span
-          className={cn('badge mb-2 select-none', {
-            'badge-primary': isCurrentPlayerTurn,
-            'badge-secondary': !isCurrentPlayerTurn,
-          })}
-        >
-          {isCurrentPlayerTurn ? 'Your turn' : 'Opponent\'s Turn'}
-        </span>
-      )}
+      <div className="flex flex-row justify-between items-center mb-1">
+        {gameState && (
+          <span
+            className={cn('badge badge-lg mb-2 select-none', {
+              'badge-primary': isCurrentPlayerTurn,
+              'badge-secondary': !isCurrentPlayerTurn,
+            })}
+          >
+            {isCurrentPlayerTurn ? 'Your turn' : 'Opponent\'s Turn'}
+          </span>
+        )}
+
+        <div className="flex items-center">
+          <span>
+            Playing as&nbsp;
+            {
+              playerState?.player === 1 ? 'Red' : 'Yellow'
+            }
+          </span>
+          <div
+            className={cn('w-4 h-4 rounded-full inline-block ml-2', {
+              'bg-red-400': playerState?.player === 1,
+              'bg-yellow-400': playerState?.player === 2,
+            })}
+          >
+
+          </div>
+        </div>
+      </div>
 
       <div
         className={cn('grid grid-cols-7 gap-2 bg-base-100 p-2 rounded-lg border transition-colors', {

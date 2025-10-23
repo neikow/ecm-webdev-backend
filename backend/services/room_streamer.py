@@ -31,11 +31,12 @@ class RoomStreamerService:
     async def send_current_room_state(
             ws: WebSocket,
             room_id: int,
+            user_id: str,
             store: MemoryEventStore,
             snapshot_builder: SnapshotBuilderBase,
     ) -> None:
         history, current_last = await store.read_from(room_id)
-        snapshot = await snapshot_builder.build(room_id, history)
+        snapshot = await snapshot_builder.build(room_id, history, user_id=user_id)
 
         await ws.send_json(
             WSMessageSnapshot(
@@ -167,6 +168,18 @@ class RoomStreamerService:
                     event = await event_store.append(
                         room_id=current_user.room_id,
                         event_type=GameEvent.GAME_START,
+                        actor_id=current_user.id,
+                    )
+                    result = await RoomStreamerService._execute_game_event(
+                        game_store=game_store,
+                        current_user=current_user,
+                        event=event,
+                        event_key=message_base.event_key,
+                    )
+                elif typ == ClientMessageType.GAME_RESET:
+                    event = await event_store.append(
+                        room_id=current_user.room_id,
+                        event_type=GameEvent.GAME_RESET,
                         actor_id=current_user.id,
                     )
                     result = await RoomStreamerService._execute_game_event(

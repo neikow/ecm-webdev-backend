@@ -53,6 +53,7 @@ def test_websocket_connection_restores_history(client):
     flexmock(RoomStreamerService).should_receive("send_current_room_state").with_args(
         ws=WebSocket,
         room_id=room_id,
+        user_id=player.id,
         store=MemoryEventStore,
         snapshot_builder=SnapshotBuilderBase
     ).and_return(

@@ -15,8 +15,9 @@ class RoomEvent(str, enum.Enum):
 
 class GameEvent(str, enum.Enum):
     GAME_START = "game.start"
-    GAME_STATE_UPDATE = "game.state.update"
     GAME_INIT = "game.init"
+    GAME_RESET = "game.reset"
+    GAME_STATE_UPDATE = "game.state.update"
     PLAYER_ACTION = "player.action"
 
 

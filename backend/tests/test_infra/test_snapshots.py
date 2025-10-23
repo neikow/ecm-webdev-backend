@@ -1,6 +1,7 @@
 import pytest
 
 from backend.domain.events import BaseEvent, RoomEvent, GameEvent
+from backend.games.connect_four.schemas import ConnectFourPlayerData
 from backend.infra.snapshots import SnapshotBuilderBase, SnapshotBase, SnapshotPlayer, RoomStatus, SnapshotChatMessage, \
     PlayerStatus
 from backend.models.game_player_model import UserRole
@@ -166,3 +167,58 @@ async def test_snapshot_with_a_game_state_update_event_should_set_the_data_as_cu
     ])
 
     assert snapshot.game_state == {"some": "data"}
+
+
+@pytest.mark.asyncio
+async def test_snapshot_builder_returns_no_player_related_data_if_user_id_is_not_provided(
+        mock_snapshot_builder,
+):
+    room_id = 0
+    events = [
+        BaseEvent(
+            room_id=room_id,
+            type=GameEvent.GAME_INIT,
+            seq=1,
+            target_id="user_1",
+            data={
+                "favorite_color": "red"
+            }
+        )
+    ]
+
+    snapshot = await mock_snapshot_builder.build(room_id, events)
+    assert snapshot.player_data is None
+
+
+@pytest.mark.asyncio
+async def test_snapshot_builder_returns_player_related_data_only_for_specified_user_id(
+        mock_snapshot_builder,
+):
+    room_id = 0
+    events = [
+        BaseEvent(
+            room_id=room_id,
+            type=GameEvent.GAME_INIT,
+            seq=1,
+            target_id="user_1",
+            data=ConnectFourPlayerData(
+                player=1,
+            ).model_dump()
+        ),
+        BaseEvent(
+            room_id=room_id,
+            type=GameEvent.GAME_INIT,
+            seq=1,
+            target_id="user_2",
+            data=ConnectFourPlayerData(
+                player=2,
+            ).model_dump()
+        ),
+    ]
+
+    snapshot_user_1 = await mock_snapshot_builder.build(
+        room_id, events, user_id="user_1"
+    )
+    assert snapshot_user_1.player_data == ConnectFourPlayerData(
+        player=1
+    )

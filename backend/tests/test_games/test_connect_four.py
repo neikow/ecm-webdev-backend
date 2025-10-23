@@ -743,3 +743,114 @@ async def test_send_game_started_event_should_dispatch_one_event_per_player(
     mock_event_bus.should_receive("publish").replace_with(lambda *_, **__: build_future(None)).twice()
 
     await game.send_game_started_events(actor_id='admin')
+
+
+@pytest.mark.asyncio
+async def test_cannot_reset_game_if_not_in_the_right_state(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    with pytest.raises(GameException) as exc_info:
+        await game.handle_event(
+            BaseEvent(
+                type=GameEvent.GAME_RESET,
+                seq=0,
+                actor_id="player1",
+                room_id=game_room.id,
+            ),
+        )
+
+    assert exc_info.value.exception_type == GameExceptionType.state_incompatibility
+
+
+@pytest.mark.asyncio
+async def test_cannot_start_a_restarted_game_if_not_enough_players(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    p1 = await game.add_player("player1")
+    await game.add_player("player2")
+
+    flexmock(connect_four).should_receive("randint").and_return(1)
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
+
+    await game.handle_event(
+        BaseEvent(
+            type=GameEvent.GAME_START,
+            seq=0,
+            actor_id="player1",
+            room_id=game_room.id,
+        ),
+    )
+    assert game.state.status == GameStatus.ongoing
+
+    # Manually set the game state to win to allow reset
+    game.state.status = GameStatus.win
+
+    game.players[p1.id] = GamePlayer(
+        user_id=p1.user_id,
+        id=p1.id,
+        status="left",
+    )
+
+    await game.handle_event(
+        BaseEvent(
+            type=GameEvent.GAME_RESET,
+            seq=1,
+            actor_id="player1",
+            room_id=game_room.id,
+        ),
+    )
+    assert game.state.status == GameStatus.not_started
+    assert game.state.can_start is False
+
+
+@pytest.mark.asyncio
+async def test_can_reset_a_finished_game(
+        game_room,
+        mock_event_store,
+        mock_event_bus,
+):
+    game = ConnectFour(game_room=game_room, event_store=mock_event_store, event_bus=mock_event_bus)
+
+    await game.add_player("player1")
+    await game.add_player("player2")
+
+    flexmock(connect_four).should_receive("randint").and_return(1)
+    flexmock(game).should_receive(
+        "send_game_started_events"
+    ).with_args(actor_id="player1").and_return(
+        build_future(None)).once()
+
+    await game.handle_event(
+        BaseEvent(
+            type=GameEvent.GAME_START,
+            seq=0,
+            actor_id="player1",
+            room_id=game_room.id,
+        ),
+    )
+    assert game.state.status == GameStatus.ongoing
+
+    # Manually set the game state to win to allow reset
+    game.state.status = GameStatus.win
+
+    await game.handle_event(
+        BaseEvent(
+            type=GameEvent.GAME_RESET,
+            seq=1,
+            actor_id="player1",
+            room_id=game_room.id,
+        ),
+    )
+    assert game.state.status == GameStatus.not_started
+    assert game.state.can_start is True

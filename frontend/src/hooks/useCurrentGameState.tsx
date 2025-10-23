@@ -10,6 +10,9 @@ export function useCurrentGameState() {
     return client.on((msg) => {
       if (msg.type === 'snapshot') {
         setGameState(msg.data.game_state as any)
+        if (msg.data.player_data) {
+          setPlayerState(msg.data.player_data as any)
+        }
       }
       else if (msg.type === 'event' && msg.event.type === 'game.state.update') {
         setGameState(msg.event.data as any)

@@ -11,6 +11,7 @@ export type ClientMessage
   = | API['ClientMessageChatMessage'] & { data?: never }
     | API['ClientMessagePing'] & { data?: never, text?: never }
     | API['ClientMessageGameAction'] & { text?: never }
+    | API['ClientMessageGameReset'] & { data?: never, text?: never }
     | API['ClientMessageGameStart'] & { data?: never, text?: never }
 
 export type Listener = (msg: ServerMessage) => void

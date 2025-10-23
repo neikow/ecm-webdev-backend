@@ -50,8 +50,9 @@ async def game_room_events(
         await RoomStreamerService.send_current_room_state(
             ws=websocket,
             room_id=room_id,
+            user_id=current_user.id,
             store=event_store,
-            snapshot_builder=snapshot_builder
+            snapshot_builder=snapshot_builder,
         )
 
         send_task = asyncio.create_task(

@@ -5,7 +5,7 @@ from backend.domain.events import BaseEvent, GameEvent
 from backend.events.bus import EventBus
 from backend.games.abstract import Game, Metadata, PlayerSpec, GameException, GameExceptionType, GameStatus
 from backend.games.connect_four.consts import ROWS, COLUMNS, EMPTY, P_2, P_1
-from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData, ConnectFourInitData
+from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData, ConnectFourPlayerData
 from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
 
@@ -43,6 +43,21 @@ class ConnectFour(Game[ConnectFourState]):
             max=2,
         )
 
+    def right_number_of_players_joined(self) -> bool:
+        player_spec = self.get_players_spec()
+        return player_spec.min <= len(self.current_players) <= player_spec.max
+
+    async def _handle_game_reset(self, event: BaseEvent) -> None:
+        if self.state.status not in [GameStatus.win, GameStatus.draw]:
+            raise GameException(
+                exception_type=GameExceptionType.state_incompatibility,
+                message=f"Game is not finished, cannot reset."
+            )
+        self.state = ConnectFourState(
+            can_start=self.right_number_of_players_joined()
+        )
+        await self.broadcast_game_state_update(actor_id=event.actor_id)
+
     async def _handle_game_start(self, event: BaseEvent) -> None:
         if not self.state.status.can_be_started:
             raise GameException(
@@ -50,15 +65,10 @@ class ConnectFour(Game[ConnectFourState]):
                 message=f"Game has already started."
             )
         player_spec = self.get_players_spec()
-        if len(self.current_players) < player_spec.min:
+        if not self.right_number_of_players_joined():
             raise GameException(
                 exception_type=GameExceptionType.wrong_players_number,
-                message=f"Not enough players to start the game."
-            )
-        elif len(self.current_players) > player_spec.max:
-            raise GameException(
-                exception_type=GameExceptionType.wrong_players_number,
-                message=f"Too many players to start the game."
+                message=f"Cannot start game: requires between {player_spec.min} and {player_spec.max} players."
             )
         self.state.status = GameStatus.ongoing
         self.state.current_player = randint(P_1, P_2)
@@ -83,7 +93,7 @@ class ConnectFour(Game[ConnectFourState]):
             event_type=GameEvent.GAME_INIT,
             actor_id=actor_id,
             target_id=target_id,
-            data=ConnectFourInitData(
+            data=ConnectFourPlayerData(
                 player=next(
                     (index + 1) for index, player in enumerate(self.current_players) if player.user_id == target_id
                 ),
@@ -165,6 +175,9 @@ class ConnectFour(Game[ConnectFourState]):
         # TODO: if an event fails it should send an event to the actor informing them of the error: we could use a targetted event, or a "responds_to" field in the event
         if event.type == GameEvent.GAME_START:
             await self._handle_game_start(event)
+            return
+        elif event.type == GameEvent.GAME_RESET:
+            await self._handle_game_reset(event)
             return
         elif event.type == GameEvent.PLAYER_ACTION:
             await self._handle_player_action(event)
