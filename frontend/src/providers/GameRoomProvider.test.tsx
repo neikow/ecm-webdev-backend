@@ -8,6 +8,7 @@ const RoomEventClientMock = vi.hoisted(
   () => vi.fn().mockImplementation(() => ({
     on: onMock,
     connect: vi.fn(),
+    close: vi.fn(),
   })),
 )
 

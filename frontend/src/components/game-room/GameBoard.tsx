@@ -17,9 +17,6 @@ export function GameBoard() {
     onError: (error) => {
       console.error(error)
     },
-    onSuccess: () => {
-      console.log('Game started')
-    },
   })
 
   const { mutate: resetGame, isPending: isResetPending, error: resetError } = useMutation({
@@ -28,9 +25,6 @@ export function GameBoard() {
     } as API['ClientMessageGameReset']),
     onError: (error) => {
       console.error(error)
-    },
-    onSuccess: () => {
-      console.log('Game reset')
     },
   })
 

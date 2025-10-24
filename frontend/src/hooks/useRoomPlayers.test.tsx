@@ -12,6 +12,7 @@ const RoomEventClientMock = vi.hoisted(
   () => vi.fn().mockImplementation(() => ({
     on: onMock,
     connect: vi.fn(),
+    close: vi.fn(),
   })),
 )
 
@@ -56,8 +57,8 @@ describe('useRoomPlayers', () => {
     })
 
     const players: Player[] = [
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
-      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected', room_id: 0 },
     ]
 
     act(() => {
@@ -115,7 +116,7 @@ describe('useRoomPlayers', () => {
     const { result: playersResult } = renderHook(() => usePlayersStore())
 
     const players: Player[] = [
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
     ]
 
     act(() => {
@@ -130,21 +131,24 @@ describe('useRoomPlayers', () => {
         type: 'event',
         seq: 2,
         event: {
+          seq: 0,
           type: 'player.joined',
           data: {
             status: 'connected',
             role: 'admin',
             id: '2',
             user_name: 'Bob',
+            room_id: 0,
           },
+          room_id: 0,
         },
       })
     })
 
     expect(result.current.players).toHaveLength(2)
     expect(result.current.players).toEqual([
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
-      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected', room_id: 0 },
     ])
   })
 
@@ -159,8 +163,8 @@ describe('useRoomPlayers', () => {
     const { result: playersResult } = renderHook(() => usePlayersStore())
 
     const players: Player[] = [
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
-      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'connected', room_id: 0 },
     ]
 
     act(() => {
@@ -175,6 +179,8 @@ describe('useRoomPlayers', () => {
         type: 'event',
         seq: 3,
         event: {
+          room_id: 0,
+          seq: 1,
           type: 'player.left',
           data: {
             id: '2',
@@ -186,11 +192,11 @@ describe('useRoomPlayers', () => {
     expect(result.current.players).toHaveLength(2)
     expect(result.current.activePlayers).toHaveLength(1)
     expect(result.current.players).toEqual([
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
-      { id: '2', user_name: 'Bob', role: 'admin', status: 'disconnected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
+      { id: '2', user_name: 'Bob', role: 'admin', status: 'disconnected', room_id: 0 },
     ])
     expect(result.current.activePlayers).toEqual([
-      { id: '1', user_name: 'Alice', role: 'player', status: 'connected' },
+      { id: '1', user_name: 'Alice', role: 'player', status: 'connected', room_id: 0 },
     ])
   })
 })

@@ -1,8 +1,7 @@
+import type { API } from '../types'
 import { create } from 'zustand'
 
-export interface ConnectFourPlayerState {
-  player: 1 | 2
-}
+export type ConnectFourPlayerState = API['ConnectFourPlayerData']
 
 export interface ConnectFourGameState {
   current_player: 1 | 2
