@@ -31,9 +31,6 @@ services:
 
     restart: always
 
-    ports:
-      - "80:80"
-
 networks:
   app:
     driver: bridge
