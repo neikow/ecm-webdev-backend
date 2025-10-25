@@ -204,7 +204,7 @@ export function HomePage() {
             </svg>
           </div>
 
-          <h1 className="text-5xl font-bold">Play.ly</h1>
+          <h1 className="text-5xl font-bold">Game.ly</h1>
           <p className="py-6 text-balance">
             A collection of games to play with friends.
           </p>
