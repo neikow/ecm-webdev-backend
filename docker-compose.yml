@@ -1,0 +1,44 @@
+services:
+  backend:
+    container_name: gamely-backend
+    build:
+      dockerfile: backend/Dockerfile
+      context: .
+    networks:
+      - app
+    environment:
+      - DEV=false
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - BACKEND_COOKIE_DOMAIN=${BACKEND_COOKIE_DOMAIN}
+      - CORS_ORIGINS=${CORS_ORIGINS}
+
+    # restart: always
+
+    ports:
+      - "8000:8000"
+
+  frontend:
+    container_name: gamely
+    build:
+      dockerfile: frontend/Dockerfile
+      context: .
+      args:
+        - API_BASE_URL=${API_BASE_URL}
+        - WS_BASE_URL=${WS_BASE_URL}
+
+    networks:
+      - app
+    depends_on:
+      - backend
+
+    # restart: always
+
+    ports:
+      - "80:80"
+
+networks:
+  app:
+    driver: bridge
+  nginx:
+    external: true
+    name: nginx

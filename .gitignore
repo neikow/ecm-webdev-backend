@@ -8,6 +8,7 @@ gen
 node_modules
 dist
 .env
+.env.prod
 .env.local
 .env.*.local
 
@@ -16,3 +17,4 @@ database.db
 coverage
 
 certs
+.venv
