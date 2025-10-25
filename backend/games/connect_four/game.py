@@ -2,15 +2,14 @@ import asyncio
 from random import randint
 
 from backend.domain.events import BaseEvent, GameEvent
-from backend.events.bus import EventBus
 from backend.games.abstract import Game, Metadata, PlayerSpec, GameException, GameExceptionType, GameStatus
 from backend.games.connect_four.consts import ROWS, COLUMNS, EMPTY, P_2, P_1
 from backend.games.connect_four.schemas import ConnectFourState, ConnectFourActionData, ConnectFourPlayerData
-from backend.infra.memory_event_store import MemoryEventStore
-from backend.models.game_room_model import GameRoomModel
 
 
 class ConnectFour(Game[ConnectFourState]):
+    state_class = ConnectFourState
+
     metadata = Metadata(
         display_name="Connect Four",
         description="A two-player connection game in which the players first choose a color and then take turns dropping colored discs into a seven-column, six-row vertically suspended grid. The pieces fall straight down, occupying the lowest available space within the column. The objective of the game is to be the first to form a horizontal, vertical, or diagonal line of four of one's own discs. Connect Four is a solved game. The first player can always win by playing the right moves.",
@@ -26,15 +25,6 @@ class ConnectFour(Game[ConnectFourState]):
 8. The game can be played multiple times, with players switching colors after each game if desired.""",
         tags=["abstract", "board", "strategy", "two-player"]
     )
-
-    def __init__(
-            self,
-            game_room: GameRoomModel,
-            event_store: MemoryEventStore,
-            event_bus: EventBus,
-    ) -> None:
-        super().__init__(game_room, event_store, event_bus)
-        self.state = ConnectFourState()
 
     @classmethod
     def get_players_spec(cls) -> PlayerSpec:

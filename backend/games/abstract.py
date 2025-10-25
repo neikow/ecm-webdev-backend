@@ -88,6 +88,8 @@ class Game(abc.ABC, Generic[TGameState]):
 
     state: TGameState
 
+    state_class: type[TGameState]
+
     def __init__(
             self,
             game_room: GameRoomModel,
@@ -98,6 +100,7 @@ class Game(abc.ABC, Generic[TGameState]):
         self.event_store = event_store
         self.event_bus = event_bus
         self.players = {}
+        self.state = self.state_class()
 
     @classmethod
     @abc.abstractmethod

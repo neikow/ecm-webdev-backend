@@ -3,12 +3,18 @@ from flexmock import flexmock
 
 from backend.domain.events import BaseEvent
 from backend.factories.game_room_factory import GameRoomFactory
-from backend.games.abstract import Game, Metadata, PlayerSpec
+from backend.games.abstract import Game, Metadata, PlayerSpec, GameState
+
+
+class MockGameState(GameState):
+    pass
 
 
 @pytest.fixture()
 def mock_game(mock_event_store, mock_event_bus):
-    class DummyGame(Game):
+    class DummyGame(Game[MockGameState]):
+        state_class = MockGameState
+
         @classmethod
         def get_players_spec(cls) -> PlayerSpec:
             return PlayerSpec(

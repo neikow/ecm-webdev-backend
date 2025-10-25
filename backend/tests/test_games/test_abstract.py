@@ -2,9 +2,7 @@ import pytest
 from flexmock import flexmock
 
 from backend.domain.events import BaseEvent
-from backend.events.bus import EventBus
 from backend.games.abstract import Game, PlayerSpec, Metadata, GamePlayer, GameState
-from backend.infra.memory_event_store import MemoryEventStore
 from backend.models.game_room_model import GameRoomModel
 from backend.utils.future import build_future
 
@@ -14,13 +12,7 @@ class ConcreteGameState(GameState):
 
 
 class ConcreteGame(Game[ConcreteGameState]):
-    def __init__(self,
-                 game_room: GameRoomModel,
-                 event_bus: EventBus,
-                 event_store: MemoryEventStore,
-                 ) -> None:
-        super().__init__(game_room, event_store, event_bus)
-        self.state = ConcreteGameState()
+    state_class = ConcreteGameState
 
     @classmethod
     def get_players_spec(cls) -> PlayerSpec:
