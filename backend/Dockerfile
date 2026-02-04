@@ -12,6 +12,4 @@ COPY pyproject.toml uv.lock /app/
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen
 
-EXPOSE 8000
-
 CMD ["uv", "run", "python", "-m", "uvicorn", "backend.server:app", "--host", "0.0.0.0", "--port", "8000"]
